@@ -183,7 +183,7 @@ export function InvoiceView({ invoice, items, onClose }: InvoiceViewProps) {
       <div className="flex min-h-screen items-start justify-center p-4 pt-10 print:p-0 print:min-h-0 print:block">
         <div className="relative w-full max-w-5xl bg-white shadow-xl print:shadow-none print:max-w-full">
           {/* Action Buttons - Hidden on print */}
-          <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4 print:hidden">
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4" style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
             <h2 className="text-xl font-bold text-gray-900">
               {language === 'id' ? 'Faktur' : 'Invoice'} {invoice.invoice_number}
             </h2>
@@ -414,13 +414,20 @@ export function InvoiceView({ invoice, items, onClose }: InvoiceViewProps) {
             size: A4 portrait;
             margin: 8mm;
           }
+
+          .sticky {
+            display: none !important;
+          }
+
           body * {
             visibility: hidden;
           }
+
           #invoice-print-content,
           #invoice-print-content * {
             visibility: visible;
           }
+
           #invoice-print-content {
             position: absolute;
             left: 0;

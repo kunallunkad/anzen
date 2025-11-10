@@ -280,13 +280,20 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
             size: A4 portrait;
             margin: 8mm;
           }
+
+          .sticky {
+            display: none !important;
+          }
+
           body * {
             visibility: hidden;
           }
+
           #challan-print-content,
           #challan-print-content * {
             visibility: visible;
           }
+
           #challan-print-content {
             position: absolute;
             left: 0;
