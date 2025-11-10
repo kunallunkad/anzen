@@ -390,6 +390,10 @@ export function Sales() {
       notes: `Created from Delivery Challan: ${data.challanNumber}`,
     });
 
+    if (data.customerId) {
+      await loadPendingChallans(data.customerId);
+    }
+
     const mappedItems: InvoiceItem[] = data.items.map((item: any) => {
       const batch = batches.find(b => b.id === item.batch_id);
       const costPerUnit = batch ? (batch.import_price + batch.duty_charges + batch.freight_charges + batch.other_charges) / (batch as any).import_quantity : 0;
@@ -711,6 +715,8 @@ export function Sales() {
 
   const resetForm = () => {
     setEditingInvoice(null);
+    setSelectedChallanId('');
+    setPendingChallans([]);
     setFormData({
       invoice_number: '',
       customer_id: '',
