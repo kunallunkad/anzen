@@ -17,12 +17,13 @@ interface DeliveryChallan {
   delivery_address: string;
   vehicle_number: string | null;
   driver_name: string | null;
-  status: 'pending_invoice' | 'invoiced' | 'delivered';
   notes: string | null;
   customers?: {
     company_name: string;
     address: string;
     city: string;
+    phone: string;
+    pbf_license: string;
   };
 }
 
@@ -323,11 +324,6 @@ export function DeliveryChallan() {
   };
 
   const handleEdit = async (challan: DeliveryChallan) => {
-    if (challan.status === 'invoiced') {
-      alert('Cannot edit a challan that has already been invoiced.');
-      return;
-    }
-
     setEditingChallan(challan);
     setFormData({
       challan_number: challan.challan_number,
@@ -370,7 +366,6 @@ export function DeliveryChallan() {
         delivery_address: formData.delivery_address,
         vehicle_number: formData.vehicle_number || null,
         driver_name: formData.driver_name || null,
-        status: 'pending_invoice' as const,
         notes: formData.notes || null,
         created_by: user.id,
       };
@@ -554,27 +549,12 @@ export function DeliveryChallan() {
       label: 'Date',
       render: (challan: DeliveryChallan) => new Date(challan.challan_date).toLocaleDateString()
     },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (challan: DeliveryChallan) => (
-        <span className={`px-2 py-1 rounded text-xs font-medium ${
-          challan.status === 'invoiced' ? 'bg-green-100 text-green-800' :
-          challan.status === 'delivered' ? 'bg-blue-100 text-blue-800' :
-          'bg-yellow-100 text-yellow-800'
-        }`}>
-          {challan.status === 'pending_invoice' ? 'Pending' : challan.status === 'invoiced' ? 'Invoiced' : 'Delivered'}
-        </span>
-      )
-    },
   ];
 
   const canManage = profile?.role === 'admin' || profile?.role === 'accounts' || profile?.role === 'sales' || profile?.role === 'warehouse';
 
   const stats = {
     total: challans.length,
-    pending: challans.filter(c => c.status === 'pending_invoice').length,
-    invoiced: challans.filter(c => c.status === 'invoiced').length,
   };
 
   return (
@@ -601,19 +581,9 @@ export function DeliveryChallan() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm text-gray-600">Total Challans</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
-          </div>
-          <div className="bg-yellow-50 rounded-lg shadow p-6">
-            <p className="text-sm text-yellow-600">Pending Invoice</p>
-            <p className="text-2xl font-bold text-yellow-600 mt-1">{stats.pending}</p>
-          </div>
-          <div className="bg-green-50 rounded-lg shadow p-6">
-            <p className="text-sm text-green-600">Invoiced</p>
-            <p className="text-2xl font-bold text-green-600 mt-1">{stats.invoiced}</p>
-          </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <p className="text-sm text-gray-600">Total Delivery Challans</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
         </div>
 
         <DataTable
@@ -634,7 +604,7 @@ export function DeliveryChallan() {
               >
                 <Eye className="w-4 h-4" />
               </button>
-              {canManage && challan.status === 'pending_invoice' && (
+              {canManage && (
                 <>
                   <button
                     onClick={() => handleEdit(challan)}

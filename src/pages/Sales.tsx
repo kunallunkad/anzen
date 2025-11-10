@@ -70,6 +70,28 @@ interface Batch {
   other_charges: number;
 }
 
+interface DeliveryChallan {
+  id: string;
+  challan_number: string;
+  challan_date: string;
+  delivery_address: string;
+  vehicle_number: string | null;
+  notes: string | null;
+}
+
+interface ChallanItem {
+  product_id: string;
+  batch_id: string;
+  quantity: number;
+  products?: {
+    product_name: string;
+    product_code: string;
+  };
+  batches?: {
+    batch_number: string;
+  };
+}
+
 export function Sales() {
   const { t } = useLanguage();
   const { profile } = useAuth();
@@ -78,6 +100,8 @@ export function Sales() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [pendingChallans, setPendingChallans] = useState<DeliveryChallan[]>([]);
+  const [selectedChallanId, setSelectedChallanId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -216,6 +240,91 @@ export function Sales() {
       setBatches(data || []);
     } catch (error) {
       console.error('Error loading batches:', error);
+    }
+  };
+
+  const loadPendingChallans = async (customerId: string) => {
+    try {
+      const { data: allChallans, error: challansError } = await supabase
+        .from('delivery_challans')
+        .select('id, challan_number, challan_date, delivery_address, vehicle_number, notes')
+        .eq('customer_id', customerId)
+        .order('challan_date', { ascending: false });
+
+      if (challansError) throw challansError;
+
+      const { data: invoicedChallans, error: invoicesError } = await supabase
+        .from('sales_invoices')
+        .select('linked_challan_ids')
+        .not('linked_challan_ids', 'is', null);
+
+      if (invoicesError) throw invoicesError;
+
+      const linkedChallanIds = new Set<string>();
+      invoicedChallans?.forEach(inv => {
+        inv.linked_challan_ids?.forEach((id: string) => linkedChallanIds.add(id));
+      });
+
+      const pending = allChallans?.filter(ch => !linkedChallanIds.has(ch.id)) || [];
+      setPendingChallans(pending);
+    } catch (error) {
+      console.error('Error loading pending challans:', error);
+      setPendingChallans([]);
+    }
+  };
+
+  const handleChallanSelect = async (challanId: string) => {
+    if (!challanId) {
+      setSelectedChallanId('');
+      setItems([{
+        product_id: '',
+        batch_id: null,
+        quantity: 1,
+        unit_price: 0,
+        tax_rate: 11,
+        total: 0,
+      }]);
+      return;
+    }
+
+    setSelectedChallanId(challanId);
+
+    try {
+      const selectedChallan = pendingChallans.find(ch => ch.id === challanId);
+      if (!selectedChallan) return;
+
+      setFormData(prev => ({
+        ...prev,
+        delivery_challan_number: selectedChallan.challan_number,
+      }));
+
+      const { data: challanItems, error } = await supabase
+        .from('delivery_challan_items')
+        .select('product_id, batch_id, quantity, products(product_name, product_code), batches(batch_number)')
+        .eq('challan_id', challanId);
+
+      if (error) throw error;
+
+      if (challanItems && challanItems.length > 0) {
+        const invoiceItems = await Promise.all(challanItems.map(async (item) => {
+          const batch = batches.find(b => b.id === item.batch_id);
+          const unitPrice = batch ? calculateBatchPrice(batch) : 0;
+
+          return {
+            product_id: item.product_id,
+            batch_id: item.batch_id,
+            quantity: item.quantity,
+            unit_price: unitPrice,
+            tax_rate: 11,
+            total: item.quantity * unitPrice,
+          };
+        }));
+
+        setItems(invoiceItems);
+      }
+    } catch (error) {
+      console.error('Error loading challan items:', error);
+      alert('Failed to load delivery challan items');
     }
   };
 
@@ -401,6 +510,7 @@ export function Sales() {
             subtotal: totals.subtotal,
             tax_amount: totals.taxAmount,
             total_amount: totals.total,
+            linked_challan_ids: selectedChallanId ? [selectedChallanId] : null,
           })
           .eq('id', editingInvoice.id)
           .select()
@@ -434,6 +544,7 @@ export function Sales() {
             total_amount: totals.total,
             payment_status: 'pending',
             created_by: user.id,
+            linked_challan_ids: selectedChallanId ? [selectedChallanId] : null,
           }])
           .select()
           .single();
@@ -742,7 +853,15 @@ export function Sales() {
                 </label>
                 <select
                   value={formData.customer_id}
-                  onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })}
+                  onChange={(e) => {
+                    const customerId = e.target.value;
+                    setFormData({ ...formData, customer_id: customerId });
+                    setSelectedChallanId('');
+                    setPendingChallans([]);
+                    if (customerId) {
+                      loadPendingChallans(customerId);
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
                 >
@@ -803,14 +922,24 @@ export function Sales() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Delivery Challan #
+                  Select Delivery Challan (Optional)
                 </label>
-                <input
-                  type="text"
-                  value={formData.delivery_challan_number}
-                  onChange={(e) => setFormData({ ...formData, delivery_challan_number: e.target.value })}
+                <select
+                  value={selectedChallanId}
+                  onChange={(e) => handleChallanSelect(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
+                  disabled={!formData.customer_id}
+                >
+                  <option value="">No Delivery Challan / Manual Entry</option>
+                  {pendingChallans.map((challan) => (
+                    <option key={challan.id} value={challan.id}>
+                      {challan.challan_number} - {new Date(challan.challan_date).toLocaleDateString()}
+                    </option>
+                  ))}
+                </select>
+                {formData.customer_id && pendingChallans.length === 0 && (
+                  <p className="text-xs text-gray-500 mt-1">No pending delivery challans for this customer</p>
+                )}
               </div>
 
               <div>

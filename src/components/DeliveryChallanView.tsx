@@ -277,10 +277,15 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
       {/* Print Styles */}
       <style>{`
         @media print {
-          html, body {
-            height: 100%;
+          @page {
+            size: A4 portrait;
+            margin: 8mm;
+          }
+          body {
             margin: 0;
             padding: 0;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
           }
           body * {
             visibility: hidden;
@@ -288,25 +293,14 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
           .print\\:block, .print\\:block * {
             visibility: visible;
           }
+          .print\\:block {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
           .print\\:hidden {
             display: none !important;
-          }
-          @page {
-            size: A4 portrait;
-            margin: 8mm;
-          }
-          body {
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
-          }
-          * {
-            page-break-inside: avoid !important;
-          }
-          table {
-            page-break-inside: avoid !important;
-          }
-          div {
-            page-break-inside: avoid !important;
           }
         }
       `}</style>
