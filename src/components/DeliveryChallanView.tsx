@@ -58,9 +58,7 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
-    document.body.classList.add('printing-challan');
     window.print();
-    setTimeout(() => document.body.classList.remove('printing-challan'), 100);
   };
 
   const formatDate = (dateString: string) => {
@@ -101,7 +99,7 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
           </div>
 
           {/* Challan Content */}
-          <div ref={printRef} className="p-8 print:p-4 print:block">
+          <div id="challan-print-content" ref={printRef} className="p-8">
             {/* Header Section - Company Details */}
             <div className="mb-3 border-2 border-black p-3 print:mb-2 print:p-2">
               <div className="mb-2 flex items-start justify-between">
@@ -276,26 +274,24 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
         </div>
       </div>
 
-      {/* Print Styles */}
       <style>{`
         @media print {
           @page {
             size: A4 portrait;
             margin: 8mm;
           }
-          body.printing-challan > *:not(.fixed) {
-            display: none !important;
+          body * {
+            visibility: hidden;
           }
-          body.printing-challan .fixed {
-            position: static !important;
-            background: white !important;
+          #challan-print-content,
+          #challan-print-content * {
+            visibility: visible;
           }
-          body.printing-challan .fixed > div {
-            min-height: 0 !important;
-            padding: 0 !important;
-          }
-          .print\\:hidden {
-            display: none !important;
+          #challan-print-content {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
           }
         }
       `}</style>

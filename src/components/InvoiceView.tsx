@@ -161,15 +161,11 @@ export function InvoiceView({ invoice, items, onClose }: InvoiceViewProps) {
   };
 
   const handlePrint = () => {
-    document.body.classList.add('printing-invoice');
     window.print();
-    setTimeout(() => document.body.classList.remove('printing-invoice'), 100);
   };
 
   const handleDownloadPDF = () => {
-    document.body.classList.add('printing-invoice');
     window.print();
-    setTimeout(() => document.body.classList.remove('printing-invoice'), 100);
   };
 
   const customer = invoice.customers;
@@ -216,7 +212,7 @@ export function InvoiceView({ invoice, items, onClose }: InvoiceViewProps) {
           </div>
 
           {/* Invoice Content */}
-          <div ref={printRef} className="p-8 print:p-4 print:block">
+          <div id="invoice-print-content" ref={printRef} className="p-8">
             {/* Header Section - Your Company Details */}
             <div className="mb-3 border-2 border-black p-3 print:mb-2 print:p-2">
               <div className="mb-2 flex items-start justify-between">
@@ -412,26 +408,24 @@ export function InvoiceView({ invoice, items, onClose }: InvoiceViewProps) {
         </div>
       </div>
 
-      {/* Print Styles */}
       <style>{`
         @media print {
           @page {
             size: A4 portrait;
             margin: 8mm;
           }
-          body.printing-invoice > *:not(.fixed) {
-            display: none !important;
+          body * {
+            visibility: hidden;
           }
-          body.printing-invoice .fixed {
-            position: static !important;
-            background: white !important;
+          #invoice-print-content,
+          #invoice-print-content * {
+            visibility: visible;
           }
-          body.printing-invoice .fixed > div {
-            min-height: 0 !important;
-            padding: 0 !important;
-          }
-          .print\\:hidden {
-            display: none !important;
+          #invoice-print-content {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
           }
         }
       `}</style>
