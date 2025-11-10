@@ -161,11 +161,15 @@ export function InvoiceView({ invoice, items, onClose }: InvoiceViewProps) {
   };
 
   const handlePrint = () => {
+    document.body.classList.add('printing-invoice');
     window.print();
+    setTimeout(() => document.body.classList.remove('printing-invoice'), 100);
   };
 
   const handleDownloadPDF = () => {
+    document.body.classList.add('printing-invoice');
     window.print();
+    setTimeout(() => document.body.classList.remove('printing-invoice'), 100);
   };
 
   const customer = invoice.customers;
@@ -415,16 +419,19 @@ export function InvoiceView({ invoice, items, onClose }: InvoiceViewProps) {
             size: A4 portrait;
             margin: 8mm;
           }
-          body * {
-            visibility: hidden;
+          body.printing-invoice > *:not(.fixed) {
+            display: none !important;
           }
-          .print\\:block, .print\\:block * {
-            visibility: visible;
+          body.printing-invoice .fixed {
+            position: static !important;
+            background: white !important;
           }
-          .print\\:block {
-            position: absolute;
-            left: 0;
-            top: 0;
+          body.printing-invoice .fixed > div {
+            min-height: 0 !important;
+            padding: 0 !important;
+          }
+          .print\\:hidden {
+            display: none !important;
           }
         }
       `}</style>

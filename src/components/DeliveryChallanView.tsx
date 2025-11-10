@@ -58,7 +58,9 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
+    document.body.classList.add('printing-challan');
     window.print();
+    setTimeout(() => document.body.classList.remove('printing-challan'), 100);
   };
 
   const formatDate = (dateString: string) => {
@@ -281,16 +283,19 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
             size: A4 portrait;
             margin: 8mm;
           }
-          body * {
-            visibility: hidden;
+          body.printing-challan > *:not(.fixed) {
+            display: none !important;
           }
-          .print\\:block, .print\\:block * {
-            visibility: visible;
+          body.printing-challan .fixed {
+            position: static !important;
+            background: white !important;
           }
-          .print\\:block {
-            position: absolute;
-            left: 0;
-            top: 0;
+          body.printing-challan .fixed > div {
+            min-height: 0 !important;
+            padding: 0 !important;
+          }
+          .print\\:hidden {
+            display: none !important;
           }
         }
       `}</style>
