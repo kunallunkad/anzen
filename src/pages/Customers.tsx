@@ -18,6 +18,7 @@ interface Customer {
   contact_person: string;
   email: string;
   phone: string;
+  pbf_license: string;
   gst_vat_type: string;
   payment_terms: string;
   is_active: boolean;
@@ -39,6 +40,7 @@ export function Customers() {
     contact_person: '',
     email: '',
     phone: '',
+    pbf_license: '',
     gst_vat_type: '',
     payment_terms: '',
   });
@@ -103,6 +105,7 @@ export function Customers() {
       contact_person: '',
       email: '',
       phone: '',
+      pbf_license: '',
       gst_vat_type: '',
       payment_terms: '',
     });
@@ -119,6 +122,7 @@ export function Customers() {
       contact_person: customer.contact_person,
       email: customer.email,
       phone: customer.phone,
+      pbf_license: customer.pbf_license || '',
       gst_vat_type: customer.gst_vat_type,
       payment_terms: customer.payment_terms,
     });
@@ -293,6 +297,21 @@ export function Customers() {
                   setFormData({ ...formData, phone: e.target.value })
                 }
                 className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                PBF License (No.Izin PBF)
+              </label>
+              <input
+                type="text"
+                value={formData.pbf_license}
+                onChange={(e) =>
+                  setFormData({ ...formData, pbf_license: e.target.value })
+                }
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                placeholder="e.g., 01.001.722.9-411.000"
               />
             </div>
 

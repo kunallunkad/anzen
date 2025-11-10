@@ -136,7 +136,7 @@ export function DeliveryChallan() {
     try {
       const { data, error } = await supabase
         .from('delivery_challans')
-        .select('*, customers(company_name, address, city)')
+        .select('*, customers(company_name, address, city, phone, pbf_license)')
         .order('challan_date', { ascending: false });
 
       if (error) throw error;

@@ -37,6 +37,7 @@ interface DeliveryChallanViewProps {
       address: string;
       city: string;
       phone: string;
+      pbf_license: string;
     };
   };
   items: ChallanItem[];
@@ -152,18 +153,14 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
                     <p>{challan.delivery_address || ''}</p>
                     <p>{challan.customers?.city || ''}</p>
                   </div>
-                  {challan.customers?.phone && (
-                    <div className="mb-1">
-                      <span className="font-bold">Phone:</span>
-                      <span className="ml-2">{challan.customers.phone}</span>
-                    </div>
-                  )}
-                  {challan.vehicle_number && (
-                    <div>
-                      <span className="font-bold">No.Izin PBF:</span>
-                      <span className="ml-2">{challan.vehicle_number}</span>
-                    </div>
-                  )}
+                  <div className="mb-1">
+                    <span className="font-bold">Phone:</span>
+                    <span className="ml-2">{challan.customers?.phone || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="font-bold">No.Izin PBF:</span>
+                    <span className="ml-2">{challan.customers?.pbf_license || '-'}</span>
+                  </div>
                 </div>
 
                 {/* Right - Challan Details */}
@@ -176,10 +173,10 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
                     <span className="font-bold">Challan Date: </span>
                     <span>{formatDate(challan.challan_date)}</span>
                   </div>
-                  {challan.driver_name && (
+                  {challan.vehicle_number && (
                     <div>
-                      <span className="font-bold">Driver: </span>
-                      <span>{challan.driver_name}</span>
+                      <span className="font-bold">Vehicle No: </span>
+                      <span>{challan.vehicle_number}</span>
                     </div>
                   )}
                 </div>
@@ -224,11 +221,6 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
                     </td>
                     <td className="p-2 text-center print:p-1">
                       {totalQuantity.toLocaleString()} {firstItemUnit}
-                      {items.length > 0 && items[0].pack_size && items[0].number_of_packs && (
-                        <div className="text-[10px] font-normal">
-                          ({items[0].pack_size} {firstItemUnit} × {items.reduce((sum, item) => sum + (item.number_of_packs || 0), 0)} packs)
-                        </div>
-                      )}
                     </td>
                   </tr>
                 </tbody>
@@ -236,7 +228,7 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
             </div>
 
             {/* Notes Section */}
-            <div className="mb-3 border-2 border-black p-2 print:mb-2 print:p-1.5">
+            <div className="mb-3 p-2 print:mb-2 print:p-1.5">
               <p className="text-xs font-semibold print:text-[10px]">Catatan / Notes:</p>
               {challan.notes ? (
                 <p className="text-xs print:text-[10px] mt-1">{challan.notes}</p>
