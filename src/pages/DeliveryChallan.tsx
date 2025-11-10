@@ -66,6 +66,7 @@ interface Batch {
   current_stock: number;
   expiry_date: string | null;
   packaging_details: string | null;
+  import_date: string | null;
 }
 
 export function DeliveryChallan() {
@@ -183,16 +184,27 @@ export function DeliveryChallan() {
     try {
       const { data, error } = await supabase
         .from('batches')
-        .select('id, batch_number, product_id, current_stock, expiry_date, packaging_details')
+        .select('id, batch_number, product_id, current_stock, expiry_date, packaging_details, import_date')
         .eq('is_active', true)
         .gt('current_stock', 0)
-        .order('import_date', { ascending: false });
+        .order('import_date', { ascending: true });
 
       if (error) throw error;
       setBatches(data || []);
     } catch (error) {
       console.error('Error loading batches:', error);
     }
+  };
+
+  const getFIFOBatch = (productId: string) => {
+    const productBatches = batches
+      .filter(b => b.product_id === productId && !isExpired(b.expiry_date))
+      .sort((a, b) => {
+        const dateA = new Date(a.import_date!).getTime();
+        const dateB = new Date(b.import_date!).getTime();
+        return dateA - dateB;
+      });
+    return productBatches[0] || null;
   };
 
   const handleCustomerChange = (customerId: string) => {
@@ -622,8 +634,23 @@ export function DeliveryChallan() {
                         </div>
 
                         {item.product_id && availableBatches.length > 0 && (
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">Batch *</label>
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <label className="block text-xs text-gray-600">Batch *</label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const fifoBatch = getFIFOBatch(item.product_id);
+                                  if (fifoBatch) {
+                                    handleBatchChange(index, fifoBatch.id);
+                                  }
+                                }}
+                                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                title="Select oldest batch (FIFO)"
+                              >
+                                Use FIFO
+                              </button>
+                            </div>
                             <select
                               value={item.batch_id}
                               onChange={(e) => handleBatchChange(index, e.target.value)}
@@ -631,11 +658,14 @@ export function DeliveryChallan() {
                               required
                             >
                               <option value="">Select Batch</option>
-                              {availableBatches.map((b) => (
-                                <option key={b.id} value={b.id}>
-                                  {b.batch_number} (Stock: {b.current_stock})
-                                </option>
-                              ))}
+                              {availableBatches.map((b, idx) => {
+                                const fifoIndicator = idx === 0 ? ' 🔄 FIFO' : '';
+                                return (
+                                  <option key={b.id} value={b.id}>
+                                    {b.batch_number} (Stock: {b.current_stock}){fifoIndicator}
+                                  </option>
+                                );
+                              })}
                             </select>
                           </div>
                         )}

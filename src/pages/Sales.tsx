@@ -5,6 +5,7 @@ import { Modal } from '../components/Modal';
 import { InvoiceView } from '../components/InvoiceView';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigation } from '../contexts/NavigationContext';
 import { supabase } from '../lib/supabase';
 import { Plus, Edit, Trash2, FileText, Eye } from 'lucide-react';
 
@@ -63,11 +64,16 @@ interface Batch {
   batch_number: string;
   product_id: string;
   current_stock: number;
+  import_price: number;
+  duty_charges: number;
+  freight_charges: number;
+  other_charges: number;
 }
 
 export function Sales() {
   const { t } = useLanguage();
   const { profile } = useAuth();
+  const { navigationData, clearNavigationData } = useNavigation();
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -103,6 +109,13 @@ export function Sales() {
     loadProducts();
     loadBatches();
   }, []);
+
+  useEffect(() => {
+    if (navigationData?.sourceType === 'delivery_challan') {
+      handleDeliveryChallanData(navigationData);
+      clearNavigationData();
+    }
+  }, [navigationData]);
 
   const loadInvoices = async () => {
     try {
@@ -194,16 +207,69 @@ export function Sales() {
     try {
       const { data, error } = await supabase
         .from('batches')
-        .select('id, batch_number, product_id, current_stock')
+        .select('id, batch_number, product_id, current_stock, import_price, duty_charges, freight_charges, other_charges, import_quantity, import_date, expiry_date')
         .eq('is_active', true)
         .gt('current_stock', 0)
-        .order('import_date', { ascending: false });
+        .order('import_date', { ascending: true });
 
       if (error) throw error;
       setBatches(data || []);
     } catch (error) {
       console.error('Error loading batches:', error);
     }
+  };
+
+  const getFIFOBatch = (productId: string) => {
+    const now = new Date();
+    const productBatches = batches
+      .filter(b => {
+        if (b.product_id !== productId) return false;
+        if (!(b as any).expiry_date) return true;
+        return new Date((b as any).expiry_date) > now;
+      })
+      .sort((a, b) => {
+        const dateA = new Date((a as any).import_date).getTime();
+        const dateB = new Date((b as any).import_date).getTime();
+        return dateA - dateB;
+      });
+    return productBatches[0] || null;
+  };
+
+  const handleDeliveryChallanData = async (data: any) => {
+    const nextInvoiceNumber = await generateNextInvoiceNumber();
+
+    setFormData({
+      invoice_number: nextInvoiceNumber,
+      customer_id: data.customerId,
+      invoice_date: new Date().toISOString().split('T')[0],
+      payment_terms: '30',
+      discount: 0,
+      delivery_challan_number: data.challanNumber,
+      po_number: '',
+      notes: `Created from Delivery Challan: ${data.challanNumber}`,
+    });
+
+    const mappedItems: InvoiceItem[] = data.items.map((item: any) => {
+      const batch = batches.find(b => b.id === item.batch_id);
+      const costPerUnit = batch ? (batch.import_price + batch.duty_charges + batch.freight_charges + batch.other_charges) / (batch as any).import_quantity : 0;
+      const suggestedPrice = costPerUnit * 1.25;
+
+      return {
+        product_id: item.product_id,
+        batch_id: item.batch_id,
+        quantity: item.quantity,
+        unit_price: Math.round(suggestedPrice),
+        tax_rate: 11,
+        total: 0,
+      };
+    });
+
+    setItems(mappedItems.map(item => ({
+      ...item,
+      total: calculateItemTotal(item)
+    })));
+
+    setModalOpen(true);
   };
 
   const loadInvoiceItems = async (invoiceId: string) => {
@@ -226,6 +292,24 @@ export function Sales() {
     const subtotal = item.quantity * item.unit_price;
     const tax = subtotal * (item.tax_rate / 100);
     return subtotal + tax;
+  };
+
+  const getBatchCostPerUnit = (batchId: string | null): number => {
+    if (!batchId) return 0;
+    const batch = batches.find(b => b.id === batchId) as any;
+    if (!batch || !batch.import_quantity) return 0;
+    const totalCost = batch.import_price + batch.duty_charges + batch.freight_charges + batch.other_charges;
+    return totalCost / batch.import_quantity;
+  };
+
+  const calculateMargin = (unitPrice: number, costPerUnit: number): number => {
+    if (costPerUnit === 0) return 0;
+    return ((unitPrice - costPerUnit) / unitPrice) * 100;
+  };
+
+  const getSuggestedPrice = (batchId: string | null, markup: number = 25): number => {
+    const cost = getBatchCostPerUnit(batchId);
+    return Math.round(cost * (1 + markup / 100));
   };
 
   const updateItemTotal = (index: number, updatedItem: InvoiceItem) => {
@@ -759,38 +843,47 @@ export function Sales() {
               <div className="space-y-3">
                 {items.map((item, index) => {
                   const availableBatches = batches.filter(b => b.product_id === item.product_id);
-                  return (
-                    <div key={index} className="grid grid-cols-6 gap-2 items-end p-3 bg-gray-50 rounded-lg">
-                      <div className="col-span-2">
-                        <label className="block text-xs text-gray-600 mb-1">Product</label>
-                        <select
-                          value={item.product_id}
-                          onChange={(e) => updateItemTotal(index, { ...item, product_id: e.target.value, batch_id: null })}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                          required
-                        >
-                          <option value="">Select</option>
-                          {products.map((p) => (
-                            <option key={p.id} value={p.id}>{p.product_name}</option>
-                          ))}
-                        </select>
-                      </div>
+                  const costPerUnit = getBatchCostPerUnit(item.batch_id);
+                  const margin = calculateMargin(item.unit_price, costPerUnit);
+                  const suggestedPrice = getSuggestedPrice(item.batch_id);
 
-                      {item.product_id && availableBatches.length > 0 && (
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">Batch</label>
+                  return (
+                    <div key={index} className="p-3 bg-gray-50 rounded-lg space-y-2">
+                      <div className="grid grid-cols-6 gap-2 items-end">
+                        <div className="col-span-2">
+                          <label className="block text-xs text-gray-600 mb-1">Product</label>
                           <select
-                            value={item.batch_id || ''}
-                            onChange={(e) => updateItemTotal(index, { ...item, batch_id: e.target.value || null })}
+                            value={item.product_id}
+                            onChange={(e) => updateItemTotal(index, { ...item, product_id: e.target.value, batch_id: null })}
                             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                            required
                           >
                             <option value="">Select</option>
-                            {availableBatches.map((b) => (
-                              <option key={b.id} value={b.id}>{b.batch_number}</option>
+                            {products.map((p) => (
+                              <option key={p.id} value={p.id}>{p.product_name}</option>
                             ))}
                           </select>
                         </div>
-                      )}
+
+                        {item.product_id && availableBatches.length > 0 && (
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Batch</label>
+                            <select
+                              value={item.batch_id || ''}
+                              onChange={(e) => {
+                                const batchId = e.target.value || null;
+                                const suggested = getSuggestedPrice(batchId);
+                                updateItemTotal(index, { ...item, batch_id: batchId, unit_price: suggested });
+                              }}
+                              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">Select</option>
+                              {availableBatches.map((b) => (
+                                <option key={b.id} value={b.id}>{b.batch_number}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
 
                       <div>
                         <label className="block text-xs text-gray-600 mb-1">Qty</label>
@@ -840,16 +933,51 @@ export function Sales() {
                             disabled
                           />
                         </div>
-                        {items.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeItem(index)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                          {items.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeItem(index)}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
+
+                      {item.batch_id && costPerUnit > 0 && (
+                        <div className="flex items-center gap-4 text-xs p-2 bg-white rounded border border-gray-200">
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-600">Cost/Unit:</span>
+                            <span className="font-semibold text-gray-900">Rp {costPerUnit.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</span>
+                          </div>
+                          <div className="h-4 w-px bg-gray-300" />
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-600">Suggested Price (25%):</span>
+                            <span className="font-semibold text-blue-600">Rp {suggestedPrice.toLocaleString('id-ID')}</span>
+                          </div>
+                          <div className="h-4 w-px bg-gray-300" />
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-600">Current Margin:</span>
+                            <span className={`font-semibold ${
+                              margin >= 20 ? 'text-green-600' :
+                              margin >= 10 ? 'text-yellow-600' :
+                              'text-red-600'
+                            }`}>
+                              {margin.toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="h-4 w-px bg-gray-300" />
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-600">Profit/Unit:</span>
+                            <span className={`font-semibold ${
+                              item.unit_price > costPerUnit ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              Rp {(item.unit_price - costPerUnit).toLocaleString('id-ID', { maximumFractionDigits: 0 })}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
