@@ -128,7 +128,7 @@ export function DeliveryChallanView() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-6 print:block">
         <div className="flex items-center justify-between print:hidden">
           <button
             onClick={() => {
@@ -151,7 +151,7 @@ export function DeliveryChallanView() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-8 print:shadow-none print:p-4 print-content">
+        <div className="bg-white rounded-lg shadow-lg p-8 print:shadow-none print:p-4">
           {/* Header Section - Company Details */}
           <div className="mb-3 border-2 border-black p-3 print:mb-2 print:p-2">
             <div className="mb-2 flex items-start justify-between">
@@ -341,37 +341,35 @@ export function DeliveryChallanView() {
       {/* Print Styles */}
       <style>{`
         @media print {
+          html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+          }
+          body * {
+            visibility: hidden;
+          }
+          .print\\:block, .print\\:block * {
+            visibility: visible;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
           @page {
             size: A4 portrait;
             margin: 8mm;
           }
-
           body {
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
           }
-
-          body * {
-            visibility: hidden;
+          * {
+            page-break-inside: avoid !important;
           }
-
-          .print-content,
-          .print-content * {
-            visibility: visible;
-          }
-
-          .print-content {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-
-          .print\\:hidden {
-            display: none !important;
-          }
-
           table {
+            page-break-inside: avoid !important;
+          }
+          div {
             page-break-inside: avoid !important;
           }
         }
