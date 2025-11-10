@@ -232,11 +232,15 @@ export function Inventory() {
         </span>
       )
     },
-    { key: 'reference_number', label: 'Reference' },
+    {
+      key: 'reference_number',
+      label: 'Reference',
+      render: (tx: InventoryTransaction) => tx.reference_number || (tx.transaction_type === 'purchase' ? 'Batch Import' : '-')
+    },
     {
       key: 'created_by',
       label: 'Created By',
-      render: (tx: InventoryTransaction) => tx.user_profiles?.full_name || 'Unknown'
+      render: (tx: InventoryTransaction) => tx.user_profiles?.full_name || (tx.transaction_type === 'purchase' ? 'System' : 'Unknown')
     },
   ];
 

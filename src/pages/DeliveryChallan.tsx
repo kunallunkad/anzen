@@ -121,7 +121,7 @@ export function DeliveryChallan() {
   const loadCompanySettings = async () => {
     try {
       const { data, error } = await supabase
-        .from('settings')
+        .from('app_settings')
         .select('*')
         .limit(1)
         .maybeSingle();
