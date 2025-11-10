@@ -179,8 +179,8 @@ export function InvoiceView({ invoice, items, onClose }: InvoiceViewProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-75 print:bg-white print:relative print:overflow-visible">
-      <div className="flex min-h-screen items-start justify-center p-4 pt-10 print:p-0 print:block">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-75 print:static print:bg-white print:overflow-visible">
+      <div className="flex min-h-screen items-start justify-center p-4 pt-10 print:p-0 print:min-h-0 print:block">
         <div className="relative w-full max-w-5xl bg-white shadow-xl print:shadow-none print:max-w-full">
           {/* Action Buttons - Hidden on print */}
           <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4 print:hidden">
@@ -415,23 +415,9 @@ export function InvoiceView({ invoice, items, onClose }: InvoiceViewProps) {
             size: A4 portrait;
             margin: 8mm;
           }
-          body {
-            margin: 0;
-            padding: 0;
+          * {
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
-          }
-          body * {
-            visibility: hidden;
-          }
-          .print\\:block, .print\\:block * {
-            visibility: visible;
-          }
-          .print\\:block {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
           }
           .print\\:hidden {
             display: none !important;
