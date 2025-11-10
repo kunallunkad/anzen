@@ -341,35 +341,46 @@ export function DeliveryChallanView() {
       {/* Print Styles */}
       <style>{`
         @media print {
-          html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-          }
-          body * {
-            visibility: hidden;
-          }
-          .print\\:block, .print\\:block * {
-            visibility: visible;
-          }
-          .print\\:hidden {
-            display: none !important;
-          }
           @page {
             size: A4 portrait;
             margin: 8mm;
           }
+
           body {
+            margin: 0;
+            padding: 0;
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
           }
-          * {
-            page-break-inside: avoid !important;
+
+          /* Hide Layout sidebar and header */
+          aside, header {
+            display: none !important;
           }
+
+          /* Remove layout padding */
+          main {
+            padding: 0 !important;
+          }
+
+          /* Hide everything by default */
+          body * {
+            visibility: hidden;
+          }
+
+          /* Show only the print content */
+          .print\\:block,
+          .print\\:block * {
+            visibility: visible !important;
+          }
+
+          /* Hide elements marked with print:hidden */
+          .print\\:hidden {
+            display: none !important;
+          }
+
+          /* Prevent page breaks inside tables */
           table {
-            page-break-inside: avoid !important;
-          }
-          div {
             page-break-inside: avoid !important;
           }
         }
