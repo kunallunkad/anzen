@@ -139,44 +139,49 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
               <div className="flex justify-between">
                 {/* Left - Customer Details */}
                 <div className="space-y-1 text-xs print:text-[10px] print:space-y-0 flex-1">
-                  <div>
-                    <span className="font-bold">Kepada / To:</span>
+                  <div className="mb-1">
+                    <span className="font-bold">Company Name:</span>
                   </div>
-                  <div className="ml-4 mb-1">
+                  <div className="ml-4 mb-2">
                     <p className="font-semibold">{challan.customers?.company_name || ''}</p>
                   </div>
-                  <div className="pt-1">
-                    <span className="font-bold">Alamat / Address:</span>
+                  <div className="mb-1">
+                    <span className="font-bold">Address:</span>
                   </div>
-                  <div className="ml-4">
+                  <div className="ml-4 mb-2">
                     <p>{challan.delivery_address || ''}</p>
                     <p>{challan.customers?.city || ''}</p>
                   </div>
                   {challan.customers?.phone && (
-                    <div className="pt-1">
-                      <span className="font-bold">Telp / Phone:</span>
+                    <div className="mb-1">
+                      <span className="font-bold">Phone:</span>
                       <span className="ml-2">{challan.customers.phone}</span>
                     </div>
                   )}
                   {challan.vehicle_number && (
-                    <div className="pt-1">
-                      <span className="font-bold">Kendaraan / Vehicle:</span>
+                    <div>
+                      <span className="font-bold">No.Izin PBF:</span>
                       <span className="ml-2">{challan.vehicle_number}</span>
-                      {challan.driver_name && <span> - {challan.driver_name}</span>}
                     </div>
                   )}
                 </div>
 
                 {/* Right - Challan Details */}
-                <div className="space-y-1 text-xs print:text-[10px] print:space-y-0 w-64">
-                  <div className="flex">
-                    <span className="font-bold w-32">No. Surat Jalan:</span>
+                <div className="space-y-1 text-xs print:text-[10px] print:space-y-0 text-right w-64">
+                  <div className="mb-1">
+                    <span className="font-bold">Challan No: </span>
                     <span>{challan.challan_number}</span>
                   </div>
-                  <div className="flex">
-                    <span className="font-bold w-32">Tanggal / Date:</span>
+                  <div className="mb-1">
+                    <span className="font-bold">Challan Date: </span>
                     <span>{formatDate(challan.challan_date)}</span>
                   </div>
+                  {challan.driver_name && (
+                    <div>
+                      <span className="font-bold">Driver: </span>
+                      <span>{challan.driver_name}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -187,11 +192,10 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
                 <thead>
                   <tr className="border-b-2 border-black">
                     <th className="border-r border-black p-2 text-center font-bold print:p-1" style={{ width: '5%' }}>No</th>
-                    <th className="border-r border-black p-2 text-center font-bold print:p-1" style={{ width: '12%' }}>Kode Produk<br/>Product Code</th>
-                    <th className="border-r border-black p-2 text-left font-bold print:p-1" style={{ width: '25%' }}>Nama Produk<br/>Product Name</th>
-                    <th className="border-r border-black p-2 text-center font-bold print:p-1" style={{ width: '10%' }}>No Batch<br/>Batch No</th>
-                    <th className="border-r border-black p-2 text-center font-bold print:p-1" style={{ width: '10%' }}>Exp. Date</th>
-                    <th className="border-r border-black p-2 text-center font-bold print:p-1" style={{ width: '15%' }}>Kemasan<br/>Packaging</th>
+                    <th className="border-r border-black p-2 text-left font-bold print:p-1" style={{ width: '30%' }}>Nama Produk<br/>Product Name</th>
+                    <th className="border-r border-black p-2 text-center font-bold print:p-1" style={{ width: '12%' }}>No Batch<br/>Batch No</th>
+                    <th className="border-r border-black p-2 text-center font-bold print:p-1" style={{ width: '12%' }}>Exp. Date</th>
+                    <th className="border-r border-black p-2 text-center font-bold print:p-1" style={{ width: '18%' }}>Kemasan<br/>Packaging</th>
                     <th className="border-r border-black p-2 text-center font-bold print:p-1" style={{ width: '8%' }}>Jumlah<br/>Packs</th>
                     <th className="p-2 text-center font-bold print:p-1" style={{ width: '15%' }}>Kuantitas<br/>Quantity</th>
                   </tr>
@@ -200,7 +204,6 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
                   {items.map((item, index) => (
                     <tr key={item.id} className="border-b border-black">
                       <td className="border-r border-black p-2 text-center print:p-1">{index + 1}</td>
-                      <td className="border-r border-black p-2 text-center print:p-1">{item.products?.product_code}</td>
                       <td className="border-r border-black p-2 print:p-1">{item.products?.product_name}</td>
                       <td className="border-r border-black p-2 text-center print:p-1">{item.batches?.batch_number}</td>
                       <td className="border-r border-black p-2 text-center print:p-1">
@@ -216,7 +219,7 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
                     </tr>
                   ))}
                   <tr className="border-t-2 border-black bg-gray-50 font-bold">
-                    <td colSpan={7} className="border-r border-black p-2 text-right print:p-1">
+                    <td colSpan={6} className="border-r border-black p-2 text-right print:p-1">
                       Total Kuantitas / Total Quantity:
                     </td>
                     <td className="p-2 text-center print:p-1">
