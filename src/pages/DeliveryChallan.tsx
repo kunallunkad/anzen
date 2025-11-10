@@ -4,8 +4,9 @@ import { DataTable } from '../components/DataTable';
 import { Modal } from '../components/Modal';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigation } from '../contexts/NavigationContext';
 import { supabase } from '../lib/supabase';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Eye, Edit } from 'lucide-react';
 
 interface DeliveryChallan {
   id: string;
@@ -71,6 +72,7 @@ interface Batch {
 
 export function DeliveryChallan() {
   const { profile } = useAuth();
+  const { setCurrentPage } = useNavigation();
   const [challans, setChallans] = useState<DeliveryChallan[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -485,17 +487,41 @@ export function DeliveryChallan() {
           columns={columns}
           data={challans}
           loading={loading}
-          actions={canManage ? (challan) => (
+          actions={(challan) => (
             <div className="flex items-center gap-2">
               <button
-                onClick={() => handleDelete(challan.id)}
-                className="p-1 text-red-600 hover:bg-red-50 rounded"
-                title="Delete Challan"
+                onClick={() => {
+                  sessionStorage.setItem('viewChallanId', challan.id);
+                  setCurrentPage('delivery-challan-view');
+                }}
+                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                title="View Challan"
               >
-                <Trash2 className="w-4 h-4" />
+                <Eye className="w-4 h-4" />
               </button>
+              {canManage && (
+                <button
+                  onClick={() => {
+                    sessionStorage.setItem('editChallanId', challan.id);
+                    setCurrentPage('delivery-challan-edit');
+                  }}
+                  className="p-1 text-green-600 hover:bg-green-50 rounded"
+                  title="Edit Challan"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+              )}
+              {canManage && challan.status === 'pending_invoice' && (
+                <button
+                  onClick={() => handleDelete(challan.id)}
+                  className="p-1 text-red-600 hover:bg-red-50 rounded"
+                  title="Delete Challan"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
-          ) : undefined}
+          )}
         />
 
         <Modal
