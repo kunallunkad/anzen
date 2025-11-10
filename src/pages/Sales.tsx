@@ -522,14 +522,19 @@ export function Sales() {
       if (editingInvoice) {
         const oldItems = await loadInvoiceItems(editingInvoice.id);
 
-        for (const oldItem of oldItems) {
-          if (oldItem.batch_id) {
-            const batch = batches.find(b => b.id === oldItem.batch_id);
-            if (batch) {
-              await supabase
-                .from('batches')
-                .update({ current_stock: batch.current_stock + oldItem.quantity })
-                .eq('id', oldItem.batch_id);
+        // Only restore stock if the old invoice was NOT linked to a delivery challan
+        const wasLinkedToChallan = editingInvoice.linked_challan_ids && editingInvoice.linked_challan_ids.length > 0;
+
+        if (!wasLinkedToChallan) {
+          for (const oldItem of oldItems) {
+            if (oldItem.batch_id) {
+              const batch = batches.find(b => b.id === oldItem.batch_id);
+              if (batch) {
+                await supabase
+                  .from('batches')
+                  .update({ current_stock: batch.current_stock + oldItem.quantity })
+                  .eq('id', oldItem.batch_id);
+              }
             }
           }
         }
@@ -607,35 +612,48 @@ export function Sales() {
 
       if (itemsError) throw itemsError;
 
-      for (const item of items) {
-        if (item.batch_id) {
-          const batch = batches.find(b => b.id === item.batch_id);
-          if (batch) {
-            const { error: batchError } = await supabase
-              .from('batches')
-              .update({ current_stock: batch.current_stock - item.quantity })
-              .eq('id', item.batch_id);
+      // Only deduct stock and create transactions if NOT linked to a delivery challan
+      // (Delivery challans already deduct stock when created)
+      const isLinkedToChallan = selectedChallanId || (invoice.linked_challan_ids && invoice.linked_challan_ids.length > 0);
 
-            if (batchError) throw batchError;
+      if (!isLinkedToChallan) {
+        for (const item of items) {
+          if (item.batch_id) {
+            const batch = batches.find(b => b.id === item.batch_id);
+            if (batch) {
+              const newStock = batch.current_stock - item.quantity;
+
+              // Validate stock availability
+              if (newStock < 0) {
+                throw new Error(`Insufficient stock for batch. Available: ${batch.current_stock}, Required: ${item.quantity}`);
+              }
+
+              const { error: batchError } = await supabase
+                .from('batches')
+                .update({ current_stock: newStock })
+                .eq('id', item.batch_id);
+
+              if (batchError) throw batchError;
+            }
           }
-        }
 
-        const { error: txError } = await supabase
-          .from('inventory_transactions')
-          .insert([{
-            transaction_type: 'sale',
-            product_id: item.product_id,
-            batch_id: item.batch_id || null,
-            quantity: item.quantity,
-            reference_number: formData.invoice_number,
-            notes: `Sales invoice ${formData.invoice_number}`,
-            transaction_date: formData.invoice_date,
-            created_by: user.id,
-          }]);
+          const { error: txError } = await supabase
+            .from('inventory_transactions')
+            .insert([{
+              transaction_type: 'sale',
+              product_id: item.product_id,
+              batch_id: item.batch_id || null,
+              quantity: item.quantity,
+              reference_number: formData.invoice_number,
+              notes: `Sales invoice ${formData.invoice_number}`,
+              transaction_date: formData.invoice_date,
+              created_by: user.id,
+            }]);
 
-        if (txError) {
-          console.error('Error creating inventory transaction:', txError);
-          throw txError;
+          if (txError) {
+            console.error('Error creating inventory transaction:', txError);
+            throw txError;
+          }
         }
       }
 
