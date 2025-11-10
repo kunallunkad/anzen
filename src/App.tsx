@@ -12,7 +12,6 @@ import { Inventory } from './pages/Inventory';
 import { CRM } from './pages/CRM';
 import { DeliveryChallan } from './pages/DeliveryChallan';
 import { DeliveryChallanView } from './pages/DeliveryChallanView';
-import { DeliveryChallanEdit } from './pages/DeliveryChallanEdit';
 import { Sales } from './pages/Sales';
 import { Finance } from './pages/Finance';
 import { Settings } from './pages/Settings';
@@ -68,8 +67,6 @@ function AppContent() {
         return <DeliveryChallan />;
       case 'delivery-challan-view':
         return <DeliveryChallanView />;
-      case 'delivery-challan-edit':
-        return <DeliveryChallanEdit />;
       case 'sales':
         return <Sales />;
       case 'finance':

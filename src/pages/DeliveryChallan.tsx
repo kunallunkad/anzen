@@ -70,6 +70,11 @@ interface Batch {
   import_date: string | null;
 }
 
+const isExpired = (expiryDate: string | null): boolean => {
+  if (!expiryDate) return false;
+  return new Date(expiryDate) < new Date();
+};
+
 export function DeliveryChallan() {
   const { profile } = useAuth();
   const { setCurrentPage } = useNavigation();
@@ -80,6 +85,7 @@ export function DeliveryChallan() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingChallan, setEditingChallan] = useState<DeliveryChallan | null>(null);
+  const [originalItems, setOriginalItems] = useState<ChallanItem[]>([]);
   const [formData, setFormData] = useState({
     challan_number: '',
     customer_id: '',
@@ -198,6 +204,21 @@ export function DeliveryChallan() {
     }
   };
 
+  const loadChallanItems = async (challanId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('delivery_challan_items')
+        .select('*, products(product_name, product_code, unit), batches(batch_number, expiry_date, packaging_details, current_stock)')
+        .eq('challan_id', challanId);
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error loading challan items:', error);
+      return [];
+    }
+  };
+
   const getFIFOBatch = (productId: string) => {
     const productBatches = batches
       .filter(b => b.product_id === productId && !isExpired(b.expiry_date))
@@ -280,6 +301,40 @@ export function DeliveryChallan() {
     }
   };
 
+  const handleEdit = async (challan: DeliveryChallan) => {
+    if (challan.status === 'invoiced') {
+      alert('Cannot edit a challan that has already been invoiced.');
+      return;
+    }
+
+    setEditingChallan(challan);
+    setFormData({
+      challan_number: challan.challan_number,
+      customer_id: challan.customer_id,
+      challan_date: challan.challan_date,
+      delivery_address: challan.delivery_address,
+      vehicle_number: challan.vehicle_number || '',
+      driver_name: challan.driver_name || '',
+      notes: challan.notes || '',
+    });
+
+    const loadedItems = await loadChallanItems(challan.id);
+    setOriginalItems(loadedItems);
+
+    if (loadedItems.length > 0) {
+      setItems(loadedItems.map(item => ({
+        product_id: item.product_id,
+        batch_id: item.batch_id,
+        quantity: item.quantity,
+        pack_size: item.pack_size,
+        pack_type: item.pack_type,
+        number_of_packs: item.number_of_packs,
+      })));
+    }
+
+    setModalOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -302,6 +357,52 @@ export function DeliveryChallan() {
       let challanId: string;
 
       if (editingChallan) {
+        const stockAdjustments: { batch_id: string; adjustment: number }[] = [];
+
+        for (const originalItem of originalItems) {
+          stockAdjustments.push({
+            batch_id: originalItem.batch_id,
+            adjustment: originalItem.quantity,
+          });
+        }
+
+        for (const newItem of items) {
+          const existingAdjustment = stockAdjustments.find(adj => adj.batch_id === newItem.batch_id);
+          if (existingAdjustment) {
+            existingAdjustment.adjustment -= newItem.quantity;
+          } else {
+            stockAdjustments.push({
+              batch_id: newItem.batch_id,
+              adjustment: -newItem.quantity,
+            });
+          }
+        }
+
+        for (const adjustment of stockAdjustments) {
+          if (adjustment.adjustment !== 0) {
+            const { error: batchError } = await supabase.rpc('update_batch_stock', {
+              p_batch_id: adjustment.batch_id,
+              p_adjustment: adjustment.adjustment,
+            });
+
+            if (batchError) {
+              const { data: batchData } = await supabase
+                .from('batches')
+                .select('current_stock')
+                .eq('id', adjustment.batch_id)
+                .single();
+
+              if (batchData) {
+                const newStock = batchData.current_stock + adjustment.adjustment;
+                await supabase
+                  .from('batches')
+                  .update({ current_stock: newStock })
+                  .eq('id', adjustment.batch_id);
+              }
+            }
+          }
+        }
+
         const { data: updatedChallan, error: updateError } = await supabase
           .from('delivery_challans')
           .update(challanData)
@@ -328,6 +429,28 @@ export function DeliveryChallan() {
 
         if (challanError) throw challanError;
         challanId = newChallan.id;
+
+        const stockUpdates = items.map(item => ({
+          batch_id: item.batch_id,
+          quantity_to_deduct: item.quantity,
+        }));
+
+        for (const update of stockUpdates) {
+          const { error: batchError } = await supabase.rpc('update_batch_stock', {
+            p_batch_id: update.batch_id,
+            p_adjustment: -update.quantity_to_deduct,
+          });
+
+          if (batchError) {
+            const batch = batches.find(b => b.id === update.batch_id);
+            if (batch) {
+              await supabase
+                .from('batches')
+                .update({ current_stock: batch.current_stock - update.quantity_to_deduct })
+                .eq('id', update.batch_id);
+            }
+          }
+        }
       }
 
       const challanItemsData = items.map(item => ({
@@ -346,23 +469,11 @@ export function DeliveryChallan() {
 
       if (itemsError) throw itemsError;
 
-      for (const item of items) {
-        const batch = batches.find(b => b.id === item.batch_id);
-        if (batch) {
-          const { error: batchError } = await supabase
-            .from('batches')
-            .update({ current_stock: batch.current_stock - item.quantity })
-            .eq('id', item.batch_id);
-
-          if (batchError) throw batchError;
-        }
-      }
-
       setModalOpen(false);
       resetForm();
       loadChallans();
       loadBatches();
-      alert('Delivery Challan created successfully!');
+      alert(`Delivery Challan ${editingChallan ? 'updated' : 'created'} successfully!`);
     } catch (error) {
       console.error('Error saving challan:', error);
       alert('Failed to save challan. Please try again.');
@@ -388,6 +499,7 @@ export function DeliveryChallan() {
 
   const resetForm = () => {
     setEditingChallan(null);
+    setOriginalItems([]);
     setFormData({
       challan_number: '',
       customer_id: '',
@@ -499,26 +611,23 @@ export function DeliveryChallan() {
               >
                 <Eye className="w-4 h-4" />
               </button>
-              {canManage && (
-                <button
-                  onClick={() => {
-                    sessionStorage.setItem('editChallanId', challan.id);
-                    setCurrentPage('delivery-challan-edit');
-                  }}
-                  className="p-1 text-green-600 hover:bg-green-50 rounded"
-                  title="Edit Challan"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-              )}
               {canManage && challan.status === 'pending_invoice' && (
-                <button
-                  onClick={() => handleDelete(challan.id)}
-                  className="p-1 text-red-600 hover:bg-red-50 rounded"
-                  title="Delete Challan"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <>
+                  <button
+                    onClick={() => handleEdit(challan)}
+                    className="p-1 text-green-600 hover:bg-green-50 rounded"
+                    title="Edit Challan"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(challan.id)}
+                    className="p-1 text-red-600 hover:bg-red-50 rounded"
+                    title="Delete Challan"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
               )}
             </div>
           )}
@@ -800,7 +909,7 @@ export function DeliveryChallan() {
                 type="submit"
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
-                Create Challan
+                {editingChallan ? 'Update Challan' : 'Create Challan'}
               </button>
             </div>
           </form>
