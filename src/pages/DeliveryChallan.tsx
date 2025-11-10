@@ -7,7 +7,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '../contexts/NavigationContext';
 import { supabase } from '../lib/supabase';
-import { Plus, Trash2, Eye, Edit } from 'lucide-react';
+import { Plus, Trash2, Eye, Edit, FileText } from 'lucide-react';
 
 interface DeliveryChallan {
   id: string;
@@ -79,7 +79,7 @@ const isExpired = (expiryDate: string | null): boolean => {
 
 export function DeliveryChallan() {
   const { profile } = useAuth();
-  const { setCurrentPage } = useNavigation();
+  const { setCurrentPage, setNavigationData } = useNavigation();
   const [challans, setChallans] = useState<DeliveryChallan[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -607,6 +607,23 @@ export function DeliveryChallan() {
               {canManage && (
                 <>
                   <button
+                    onClick={async () => {
+                      const items = await loadChallanItems(challan.id);
+                      setNavigationData({
+                        sourceType: 'delivery_challan',
+                        customerId: challan.customer_id,
+                        challanNumber: challan.challan_number,
+                        challanId: challan.id,
+                        items: items
+                      });
+                      setCurrentPage('sales');
+                    }}
+                    className="p-1 text-purple-600 hover:bg-purple-50 rounded"
+                    title="Create Invoice from DO"
+                  >
+                    <FileText className="w-4 h-4" />
+                  </button>
+                  <button
                     onClick={() => handleEdit(challan)}
                     className="p-1 text-green-600 hover:bg-green-50 rounded"
                     title="Edit Challan"
@@ -643,10 +660,11 @@ export function DeliveryChallan() {
                 <input
                   type="text"
                   value={formData.challan_number}
-                  onChange={(e) => setFormData({ ...formData, challan_number: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
                   required
                   placeholder="DO-24-0001"
+                  readOnly
+                  disabled
                 />
               </div>
 

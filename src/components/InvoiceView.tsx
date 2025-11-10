@@ -171,24 +171,25 @@ export function InvoiceView({ invoice, items, onClose }: InvoiceViewProps) {
 
     try {
       const canvas = await html2canvas(printRef.current, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        windowWidth: printRef.current.scrollWidth,
+        windowHeight: printRef.current.scrollHeight
       });
 
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', 0.85);
       const pdf = new jsPDF('p', 'mm', 'a4');
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-      const imgX = (pdfWidth - imgWidth * ratio) / 2;
-      const imgY = 0;
+      const ratio = pdfWidth / imgWidth;
+      const scaledHeight = imgHeight * ratio;
 
-      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(scaledHeight, pdfHeight));
       pdf.save(`Invoice-${invoice.invoice_number}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
