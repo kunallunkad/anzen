@@ -154,21 +154,26 @@ export function DeliveryChallan() {
       const prefix = 'DO';
       const currentYear = new Date().getFullYear().toString().slice(-2);
 
-      const { data: latestChallan } = await supabase
+      // Get all challan numbers with this prefix and year to find the highest number
+      const { data: allChallans } = await supabase
         .from('delivery_challans')
         .select('challan_number')
-        .like('challan_number', `${prefix}-${currentYear}%`)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .like('challan_number', `${prefix}-${currentYear}%`);
 
       let nextNumber = 1;
 
-      if (latestChallan && latestChallan.challan_number) {
-        const match = latestChallan.challan_number.match(/(\d+)$/);
-        if (match) {
-          const lastNumber = parseInt(match[1], 10);
-          nextNumber = lastNumber + 1;
+      if (allChallans && allChallans.length > 0) {
+        // Extract all numbers and find the maximum
+        const numbers = allChallans
+          .map(challan => {
+            const match = challan.challan_number.match(/(\d+)$/);
+            return match ? parseInt(match[1], 10) : 0;
+          })
+          .filter(num => !isNaN(num));
+
+        if (numbers.length > 0) {
+          const maxNumber = Math.max(...numbers);
+          nextNumber = maxNumber + 1;
         }
       }
 

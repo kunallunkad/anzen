@@ -168,23 +168,26 @@ export function Sales() {
       const prefix = settings?.invoice_prefix || 'SAPJ';
       const startNumber = settings?.invoice_start_number || 1;
 
-      // Get the latest invoice number with this prefix
-      const { data: latestInvoice } = await supabase
+      // Get all invoice numbers with this prefix to find the highest number
+      const { data: allInvoices } = await supabase
         .from('sales_invoices')
         .select('invoice_number')
-        .like('invoice_number', `${prefix}%`)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .like('invoice_number', `${prefix}%`);
 
       let nextNumber = startNumber;
 
-      if (latestInvoice && latestInvoice.invoice_number) {
-        // Extract the number part from the invoice number
-        const match = latestInvoice.invoice_number.match(/(\d+)$/);
-        if (match) {
-          const lastNumber = parseInt(match[1], 10);
-          nextNumber = lastNumber + 1;
+      if (allInvoices && allInvoices.length > 0) {
+        // Extract all numbers and find the maximum
+        const numbers = allInvoices
+          .map(inv => {
+            const match = inv.invoice_number.match(/(\d+)$/);
+            return match ? parseInt(match[1], 10) : 0;
+          })
+          .filter(num => !isNaN(num));
+
+        if (numbers.length > 0) {
+          const maxNumber = Math.max(...numbers);
+          nextNumber = maxNumber + 1;
         }
       }
 
