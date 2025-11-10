@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { DataTable } from '../components/DataTable';
 import { Modal } from '../components/Modal';
+import { DeliveryChallanView } from '../components/DeliveryChallanView';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '../contexts/NavigationContext';
@@ -84,6 +85,10 @@ export function DeliveryChallan() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [selectedChallan, setSelectedChallan] = useState<DeliveryChallan | null>(null);
+  const [challanItems, setChallanItems] = useState<ChallanItem[]>([]);
+  const [companySettings, setCompanySettings] = useState<any>(null);
   const [editingChallan, setEditingChallan] = useState<DeliveryChallan | null>(null);
   const [originalItems, setOriginalItems] = useState<ChallanItem[]>([]);
   const [formData, setFormData] = useState({
@@ -109,7 +114,23 @@ export function DeliveryChallan() {
     loadCustomers();
     loadProducts();
     loadBatches();
+    loadCompanySettings();
   }, []);
+
+  const loadCompanySettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      setCompanySettings(data);
+    } catch (error) {
+      console.error('Error loading company settings:', error);
+    }
+  };
 
   const loadChallans = async () => {
     try {
@@ -602,9 +623,11 @@ export function DeliveryChallan() {
           actions={(challan) => (
             <div className="flex items-center gap-2">
               <button
-                onClick={() => {
-                  sessionStorage.setItem('viewChallanId', challan.id);
-                  setCurrentPage('delivery-challan-view');
+                onClick={async () => {
+                  const items = await loadChallanItems(challan.id);
+                  setSelectedChallan(challan);
+                  setChallanItems(items);
+                  setViewModalOpen(true);
                 }}
                 className="p-1 text-blue-600 hover:bg-blue-50 rounded"
                 title="View Challan"
@@ -914,6 +937,15 @@ export function DeliveryChallan() {
             </div>
           </form>
         </Modal>
+
+        {viewModalOpen && selectedChallan && (
+          <DeliveryChallanView
+            challan={selectedChallan}
+            items={challanItems}
+            onClose={() => setViewModalOpen(false)}
+            companySettings={companySettings}
+          />
+        )}
       </div>
     </Layout>
   );

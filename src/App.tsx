@@ -11,7 +11,6 @@ import { Batches } from './pages/Batches';
 import { Inventory } from './pages/Inventory';
 import { CRM } from './pages/CRM';
 import { DeliveryChallan } from './pages/DeliveryChallan';
-import { DeliveryChallanView } from './pages/DeliveryChallanView';
 import { Sales } from './pages/Sales';
 import { Finance } from './pages/Finance';
 import { Settings } from './pages/Settings';
@@ -65,8 +64,6 @@ function AppContent() {
         return <CRM />;
       case 'delivery-challan':
         return <DeliveryChallan />;
-      case 'delivery-challan-view':
-        return <DeliveryChallanView />;
       case 'sales':
         return <Sales />;
       case 'finance':
