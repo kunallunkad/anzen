@@ -291,7 +291,11 @@ export function Sales() {
 
     try {
       const selectedChallan = pendingChallans.find(ch => ch.id === challanId);
-      if (!selectedChallan) return;
+      if (!selectedChallan) {
+        console.error('Selected challan not found in pending challans list');
+        alert('Error: Selected delivery challan not found. Please refresh and try again.');
+        return;
+      }
 
       setFormData(prev => ({
         ...prev,
@@ -300,31 +304,59 @@ export function Sales() {
 
       const { data: challanItems, error } = await supabase
         .from('delivery_challan_items')
-        .select('product_id, batch_id, quantity, products(product_name, product_code), batches(batch_number)')
+        .select('product_id, batch_id, quantity, products(product_name, product_code), batches(batch_number, import_price, duty_charges, freight_charges, other_charges, import_quantity)')
         .eq('challan_id', challanId);
 
-      if (error) throw error;
-
-      if (challanItems && challanItems.length > 0) {
-        const invoiceItems = await Promise.all(challanItems.map(async (item) => {
-          const batch = batches.find(b => b.id === item.batch_id);
-          const unitPrice = batch ? calculateBatchPrice(batch) : 0;
-
-          return {
-            product_id: item.product_id,
-            batch_id: item.batch_id,
-            quantity: item.quantity,
-            unit_price: unitPrice,
-            tax_rate: 11,
-            total: item.quantity * unitPrice,
-          };
-        }));
-
-        setItems(invoiceItems);
+      if (error) {
+        console.error('Database error loading challan items:', error);
+        throw error;
       }
-    } catch (error) {
+
+      if (!challanItems || challanItems.length === 0) {
+        console.warn('No items found for this delivery challan');
+        alert('This delivery challan has no items. Please add items manually.');
+        return;
+      }
+
+      const invoiceItems: InvoiceItem[] = [];
+
+      for (const item of challanItems) {
+        if (!item.product_id) {
+          console.warn('Skipping item with missing product_id');
+          continue;
+        }
+
+        let unitPrice = 0;
+
+        if (item.batch_id) {
+          const batch = batches.find(b => b.id === item.batch_id);
+          if (batch) {
+            const costPerUnit = (batch.import_price + batch.duty_charges + batch.freight_charges + batch.other_charges) / (batch as any).import_quantity;
+            unitPrice = Math.round(costPerUnit * 1.25);
+          } else {
+            console.warn(`Batch ${item.batch_id} not found in loaded batches`);
+          }
+        }
+
+        invoiceItems.push({
+          product_id: item.product_id,
+          batch_id: item.batch_id,
+          quantity: item.quantity,
+          unit_price: unitPrice,
+          tax_rate: 11,
+          total: item.quantity * unitPrice * 1.11,
+        });
+      }
+
+      if (invoiceItems.length === 0) {
+        alert('Could not load items from delivery challan. Please add items manually.');
+        return;
+      }
+
+      setItems(invoiceItems);
+    } catch (error: any) {
       console.error('Error loading challan items:', error);
-      alert('Failed to load delivery challan items');
+      alert(`Failed to load delivery challan items: ${error.message || 'Unknown error'}. Please try again or add items manually.`);
     }
   };
 
