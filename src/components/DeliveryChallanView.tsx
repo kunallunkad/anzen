@@ -99,7 +99,7 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
           </div>
 
           {/* Challan Content */}
-          <div ref={printRef} className="p-8 print:p-4">
+          <div ref={printRef} className="p-8 print:p-4 print:block">
             {/* Header Section - Company Details */}
             <div className="mb-3 border-2 border-black p-3 print:mb-2 print:p-2">
               <div className="mb-2 flex items-start justify-between">
@@ -281,12 +281,16 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
             size: A4 portrait;
             margin: 8mm;
           }
-          * {
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
+          body * {
+            visibility: hidden;
           }
-          .print\\:hidden {
-            display: none !important;
+          .print\\:block, .print\\:block * {
+            visibility: visible;
+          }
+          .print\\:block {
+            position: absolute;
+            left: 0;
+            top: 0;
           }
         }
       `}</style>
