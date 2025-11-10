@@ -12,6 +12,7 @@ interface ChallanItem {
   products?: {
     product_name: string;
     product_code: string;
+    unit: string;
   };
   batches?: {
     batch_number: string;
@@ -52,7 +53,7 @@ interface DeliveryChallanViewProps {
   } | null;
 }
 
-export function DeliveryChallanView({ challan, items, onClose, companySettings }: DeliveryChallanViewProps) {
+export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallanViewProps) {
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
@@ -61,14 +62,14 @@ export function DeliveryChallanView({ challan, items, onClose, companySettings }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const day = date.getDate();
-    const month = months[date.getMonth()];
+    const month = date.getMonth() + 1;
     const year = date.getFullYear();
-    return `${day} ${month} ${year}`;
+    return `${day.toString().padStart(2, '0')}-${month.toString().padStart(2, '0')}-${year}`;
   };
 
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+  const firstItemUnit = items[0]?.products?.unit || 'kg';
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-75 print:bg-white print:relative print:overflow-visible">
@@ -77,7 +78,7 @@ export function DeliveryChallanView({ challan, items, onClose, companySettings }
           {/* Action Buttons - Hidden on print */}
           <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4 print:hidden">
             <h2 className="text-xl font-bold text-gray-900">
-              Delivery Challan {challan.challan_number}
+              Surat Jalan {challan.challan_number}
             </h2>
             <div className="flex gap-2">
               <button
@@ -85,7 +86,7 @@ export function DeliveryChallanView({ challan, items, onClose, companySettings }
                 className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
               >
                 <Printer className="h-4 w-4" />
-                Print
+                Cetak
               </button>
               <button
                 onClick={onClose}
@@ -103,104 +104,105 @@ export function DeliveryChallanView({ challan, items, onClose, companySettings }
               <div className="mb-2 flex items-start justify-between">
                 {/* Company Logo and Info */}
                 <div className="flex items-start gap-3">
-                  {companySettings?.logo_url && (
-                    <img
-                      src={companySettings.logo_url}
-                      alt="Company Logo"
-                      className="h-16 w-16 object-contain print:h-12 print:w-12"
-                    />
-                  )}
-                  <div>
-                    <h1 className="text-xl font-bold text-gray-900 print:text-lg">
-                      {companySettings?.company_name || 'PT. SHUBHAM ANZEN PHARMA JAYA'}
-                    </h1>
-                    <p className="text-xs text-gray-600 print:text-[10px]">
-                      {companySettings?.address || 'Jl. Raya Cikarang Cibarusah No.10'}
-                    </p>
-                    <p className="text-xs text-gray-600 print:text-[10px]">
-                      {companySettings?.city || 'Cikarang, Bekasi, Jawa Barat 17530'}
-                    </p>
-                    <p className="text-xs text-gray-600 print:text-[10px]">
-                      Phone: {companySettings?.phone || '+62 21 1234 5678'} | Email: {companySettings?.email || 'info@shubhamanzen.com'}
-                    </p>
-                    {companySettings?.npwp && (
-                      <p className="text-xs text-gray-600 print:text-[10px]">
-                        NPWP: {companySettings.npwp}
-                      </p>
-                    )}
+                  <div className="h-16 w-16 flex items-center justify-center print:h-12 print:w-12">
+                    <img src="/src/assets/Untitled-1.svg" alt="Company Logo" className="h-full w-full object-contain" />
                   </div>
+                  <div>
+                    <h1 className="text-base font-bold print:text-sm">PT. SHUBHAM ANZEN PHARMA JAYA</h1>
+                    <p className="text-xs print:text-[10px]">Komplek Ruko Metro Sunter Blok A1 NO.15, Jl. Metro Indah Raya,</p>
+                    <p className="text-xs print:text-[10px]">Kelurahan Papanggo, Kec. Tanjung Priok, Jakarta Utara - 14340</p>
+                    <p className="text-xs print:text-[10px]">Telp: (+62 21) 65832426</p>
+                  </div>
+                </div>
+
+                {/* SURAT JALAN Title */}
+                <div className="text-right">
+                  <h2 className="text-3xl font-bold print:text-2xl">SURAT JALAN</h2>
                 </div>
               </div>
 
-              <div className="mt-2 border-t border-gray-300 pt-2 print:mt-1 print:pt-1">
-                <h2 className="text-center text-lg font-bold text-gray-900 print:text-base">
-                  DELIVERY CHALLAN
-                </h2>
+              {/* Company Licenses */}
+              <div className="text-xs space-y-0.5 print:text-[10px] print:space-y-0">
+                <div>
+                  <span className="font-semibold">No izin PBF</span>
+                  <span className="ml-16">: 27092400534390007</span>
+                </div>
+                <div>
+                  <span className="font-semibold">No Sertifikasi CDOB</span>
+                  <span className="ml-4">: 270924005343900070001</span>
+                </div>
               </div>
             </div>
 
-            {/* Challan Info and Customer Details */}
-            <div className="mb-3 grid grid-cols-2 gap-4 print:mb-2 print:gap-2">
-              {/* Left: Customer Details */}
-              <div className="border border-black p-2 print:p-1.5">
-                <h3 className="mb-1 text-sm font-bold text-gray-900 print:text-xs">Delivered To:</h3>
-                <div className="text-xs text-gray-700 print:text-[10px]">
-                  <p className="font-semibold">{challan.customers?.company_name}</p>
-                  <p>{challan.delivery_address}</p>
-                  <p>{challan.customers?.city}</p>
-                  {challan.customers?.phone && <p>Phone: {challan.customers.phone}</p>}
-                </div>
-              </div>
-
-              {/* Right: Challan Details */}
-              <div className="border border-black p-2 print:p-1.5">
-                <div className="space-y-1 text-xs print:text-[10px]">
-                  <div className="flex justify-between">
-                    <span className="font-semibold text-gray-900">Challan No:</span>
-                    <span className="text-gray-700">{challan.challan_number}</span>
+            {/* Customer and Challan Details */}
+            <div className="mb-3 border-2 border-black p-3 print:mb-2 print:p-2">
+              <div className="flex justify-between">
+                {/* Left - Customer Details */}
+                <div className="space-y-1 text-xs print:text-[10px] print:space-y-0 flex-1">
+                  <div>
+                    <span className="font-bold">Kepada / To:</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-semibold text-gray-900">Date:</span>
-                    <span className="text-gray-700">{formatDate(challan.challan_date)}</span>
+                  <div className="ml-4 mb-1">
+                    <p className="font-semibold">{challan.customers?.company_name || ''}</p>
                   </div>
+                  <div className="pt-1">
+                    <span className="font-bold">Alamat / Address:</span>
+                  </div>
+                  <div className="ml-4">
+                    <p>{challan.delivery_address || ''}</p>
+                    <p>{challan.customers?.city || ''}</p>
+                  </div>
+                  {challan.customers?.phone && (
+                    <div className="pt-1">
+                      <span className="font-bold">Telp / Phone:</span>
+                      <span className="ml-2">{challan.customers.phone}</span>
+                    </div>
+                  )}
                   {challan.vehicle_number && (
-                    <div className="flex justify-between">
-                      <span className="font-semibold text-gray-900">Vehicle No:</span>
-                      <span className="text-gray-700">{challan.vehicle_number}</span>
+                    <div className="pt-1">
+                      <span className="font-bold">Kendaraan / Vehicle:</span>
+                      <span className="ml-2">{challan.vehicle_number}</span>
+                      {challan.driver_name && <span> - {challan.driver_name}</span>}
                     </div>
                   )}
-                  {challan.driver_name && (
-                    <div className="flex justify-between">
-                      <span className="font-semibold text-gray-900">Driver:</span>
-                      <span className="text-gray-700">{challan.driver_name}</span>
-                    </div>
-                  )}
+                </div>
+
+                {/* Right - Challan Details */}
+                <div className="space-y-1 text-xs print:text-[10px] print:space-y-0 w-64">
+                  <div className="flex">
+                    <span className="font-bold w-32">No. Surat Jalan:</span>
+                    <span>{challan.challan_number}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="font-bold w-32">Tanggal / Date:</span>
+                    <span>{formatDate(challan.challan_date)}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Items Table */}
-            <div className="mb-3 border border-black print:mb-2">
-              <table className="w-full text-xs print:text-[10px]">
+            <div className="mb-3 border-2 border-black print:mb-2">
+              <table className="w-full border-collapse text-xs print:text-[10px]">
                 <thead>
-                  <tr className="border-b border-black bg-gray-100">
-                    <th className="border-r border-black p-2 text-left font-bold print:p-1">No</th>
-                    <th className="border-r border-black p-2 text-left font-bold print:p-1">Product Code</th>
-                    <th className="border-r border-black p-2 text-left font-bold print:p-1">Product Name</th>
-                    <th className="border-r border-black p-2 text-left font-bold print:p-1">Batch</th>
-                    <th className="border-r border-black p-2 text-center font-bold print:p-1">Expiry</th>
-                    <th className="border-r border-black p-2 text-center font-bold print:p-1">Pack Type</th>
-                    <th className="border-r border-black p-2 text-center font-bold print:p-1">Packs</th>
-                    <th className="p-2 text-right font-bold print:p-1">Quantity</th>
+                  <tr className="border-b-2 border-black">
+                    <th className="border-r border-black p-2 text-center font-bold print:p-1" style={{ width: '5%' }}>No</th>
+                    <th className="border-r border-black p-2 text-center font-bold print:p-1" style={{ width: '12%' }}>Kode Produk<br/>Product Code</th>
+                    <th className="border-r border-black p-2 text-left font-bold print:p-1" style={{ width: '25%' }}>Nama Produk<br/>Product Name</th>
+                    <th className="border-r border-black p-2 text-center font-bold print:p-1" style={{ width: '10%' }}>No Batch<br/>Batch No</th>
+                    <th className="border-r border-black p-2 text-center font-bold print:p-1" style={{ width: '10%' }}>Exp. Date</th>
+                    <th className="border-r border-black p-2 text-center font-bold print:p-1" style={{ width: '15%' }}>Kemasan<br/>Packaging</th>
+                    <th className="border-r border-black p-2 text-center font-bold print:p-1" style={{ width: '8%' }}>Jumlah<br/>Packs</th>
+                    <th className="p-2 text-center font-bold print:p-1" style={{ width: '15%' }}>Kuantitas<br/>Quantity</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((item, index) => (
-                    <tr key={item.id} className="border-b border-gray-300 last:border-b-0">
-                      <td className="border-r border-black p-2 print:p-1">{index + 1}</td>
-                      <td className="border-r border-black p-2 print:p-1">{item.products?.product_code}</td>
+                    <tr key={item.id} className="border-b border-black">
+                      <td className="border-r border-black p-2 text-center print:p-1">{index + 1}</td>
+                      <td className="border-r border-black p-2 text-center print:p-1">{item.products?.product_code}</td>
                       <td className="border-r border-black p-2 print:p-1">{item.products?.product_name}</td>
-                      <td className="border-r border-black p-2 print:p-1">{item.batches?.batch_number}</td>
+                      <td className="border-r border-black p-2 text-center print:p-1">{item.batches?.batch_number}</td>
                       <td className="border-r border-black p-2 text-center print:p-1">
                         {item.batches?.expiry_date ? formatDate(item.batches.expiry_date) : '-'}
                       </td>
@@ -210,40 +212,67 @@ export function DeliveryChallanView({ challan, items, onClose, companySettings }
                       <td className="border-r border-black p-2 text-center print:p-1">
                         {item.number_of_packs || '-'}
                       </td>
-                      <td className="p-2 text-right print:p-1">{item.quantity}</td>
+                      <td className="p-2 text-center print:p-1">{item.quantity.toLocaleString()} {item.products?.unit || firstItemUnit}</td>
                     </tr>
                   ))}
                   <tr className="border-t-2 border-black bg-gray-50 font-bold">
                     <td colSpan={7} className="border-r border-black p-2 text-right print:p-1">
-                      Total Quantity:
+                      Total Kuantitas / Total Quantity:
                     </td>
-                    <td className="p-2 text-right print:p-1">{totalQuantity}</td>
+                    <td className="p-2 text-center print:p-1">
+                      {totalQuantity.toLocaleString()} {firstItemUnit}
+                      {items.length > 0 && items[0].pack_size && items[0].number_of_packs && (
+                        <div className="text-[10px] font-normal">
+                          ({items[0].pack_size} {firstItemUnit} × {items.reduce((sum, item) => sum + (item.number_of_packs || 0), 0)} packs)
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            {/* Notes */}
-            {challan.notes && (
-              <div className="mb-3 border border-black p-2 print:mb-2 print:p-1.5">
-                <p className="text-xs font-semibold text-gray-900 print:text-[10px]">Notes:</p>
-                <p className="text-xs text-gray-700 print:text-[10px]">{challan.notes}</p>
-              </div>
-            )}
+            {/* Notes Section */}
+            <div className="mb-3 border-2 border-black p-2 print:mb-2 print:p-1.5">
+              <p className="text-xs font-semibold print:text-[10px]">Catatan / Notes:</p>
+              {challan.notes ? (
+                <p className="text-xs print:text-[10px] mt-1">{challan.notes}</p>
+              ) : (
+                <p className="text-xs print:text-[10px] mt-1">Produk dikirim dalam kondisi sesuai persyaratan penyimpanan / Goods are delivered under controlled storage conditions.</p>
+              )}
+            </div>
 
             {/* Signature Section */}
-            <div className="mt-6 grid grid-cols-3 gap-4 border-t border-gray-300 pt-4 print:mt-4 print:gap-2 print:pt-2">
-              <div className="text-center">
-                <div className="mb-12 text-xs font-semibold print:mb-8 print:text-[10px]">Prepared By</div>
-                <div className="border-t border-gray-400 pt-1 text-xs print:text-[10px]">Signature & Date</div>
+            <div className="grid grid-cols-3 gap-4 print:gap-2">
+              <div className="border-2 border-black p-2 text-center print:p-1.5">
+                <div className="mb-16 text-xs font-semibold print:mb-12 print:text-[10px]">
+                  Disiapkan Oleh<br/>Prepared By
+                </div>
+                <div className="border-t-2 border-black pt-2 print:pt-1">
+                  <div className="h-6 print:h-4"></div>
+                  <p className="text-xs print:text-[10px]">Tanda Tangan & Tanggal</p>
+                  <p className="text-xs print:text-[10px]">Signature & Date</p>
+                </div>
               </div>
-              <div className="text-center">
-                <div className="mb-12 text-xs font-semibold print:mb-8 print:text-[10px]">Delivered By</div>
-                <div className="border-t border-gray-400 pt-1 text-xs print:text-[10px]">Signature & Date</div>
+              <div className="border-2 border-black p-2 text-center print:p-1.5">
+                <div className="mb-16 text-xs font-semibold print:mb-12 print:text-[10px]">
+                  Dikirim Oleh<br/>Delivered By
+                </div>
+                <div className="border-t-2 border-black pt-2 print:pt-1">
+                  <div className="h-6 print:h-4"></div>
+                  <p className="text-xs print:text-[10px]">Tanda Tangan & Tanggal</p>
+                  <p className="text-xs print:text-[10px]">Signature & Date</p>
+                </div>
               </div>
-              <div className="text-center">
-                <div className="mb-12 text-xs font-semibold print:mb-8 print:text-[10px]">Received By</div>
-                <div className="border-t border-gray-400 pt-1 text-xs print:text-[10px]">Signature & Date</div>
+              <div className="border-2 border-black p-2 text-center print:p-1.5">
+                <div className="mb-16 text-xs font-semibold print:mb-12 print:text-[10px]">
+                  Diterima Oleh<br/>Received By
+                </div>
+                <div className="border-t-2 border-black pt-2 print:pt-1">
+                  <div className="h-6 print:h-4"></div>
+                  <p className="text-xs print:text-[10px]">Tanda Tangan & Tanggal</p>
+                  <p className="text-xs print:text-[10px]">Signature & Date</p>
+                </div>
               </div>
             </div>
           </div>
