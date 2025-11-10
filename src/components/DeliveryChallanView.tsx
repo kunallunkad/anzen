@@ -1,5 +1,7 @@
 import { useRef } from 'react';
-import { X, Printer } from 'lucide-react';
+import { X, Printer, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface ChallanItem {
   id: string;
@@ -61,6 +63,36 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
     window.print();
   };
 
+  const handleDownloadPDF = async () => {
+    if (!printRef.current) return;
+
+    try {
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 0;
+
+      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      pdf.save(`Delivery-Challan-${challan.challan_number}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const day = date.getDate();
@@ -88,6 +120,13 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
               >
                 <Printer className="h-4 w-4" />
                 Cetak
+              </button>
+              <button
+                onClick={handleDownloadPDF}
+                className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+              >
+                <Download className="h-4 w-4" />
+                PDF
               </button>
               <button
                 onClick={onClose}
