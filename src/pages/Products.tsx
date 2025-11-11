@@ -144,15 +144,39 @@ export function Products() {
   };
 
   const handleDelete = async (product: Product) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
+    if (!confirm('Are you sure you want to delete this product? This will permanently remove all related batches, transactions, and data.')) return;
 
     try {
+      const { data: batches } = await supabase
+        .from('batches')
+        .select('id')
+        .eq('product_id', product.id);
+
+      if (batches && batches.length > 0) {
+        for (const batch of batches) {
+          await supabase.from('batch_documents').delete().eq('batch_id', batch.id);
+          await supabase.from('inventory_transactions').delete().eq('batch_id', batch.id);
+          await supabase.from('sales_invoice_items').delete().eq('batch_id', batch.id);
+          await supabase.from('delivery_challan_items').delete().eq('batch_id', batch.id);
+          await supabase.from('finance_expenses').delete().eq('batch_id', batch.id);
+        }
+
+        await supabase.from('batches').delete().eq('product_id', product.id);
+      }
+
+      await supabase.from('sales_invoice_items').delete().eq('product_id', product.id);
+      await supabase.from('delivery_challan_items').delete().eq('product_id', product.id);
+      await supabase.from('inventory_transactions').delete().eq('product_id', product.id);
+      await supabase.from('product_files').delete().eq('product_id', product.id);
+
       const { error } = await supabase
         .from('products')
-        .update({ is_active: false })
+        .delete()
         .eq('id', product.id);
 
       if (error) throw error;
+
+      alert('Product deleted successfully');
       loadProducts();
     } catch (error) {
       console.error('Error deleting product:', error);

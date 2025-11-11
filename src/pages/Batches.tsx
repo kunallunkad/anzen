@@ -343,15 +343,52 @@ export function Batches() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this batch?')) return;
+    if (!confirm('Are you sure you want to delete this batch? This will permanently remove all related data.')) return;
 
     try {
+      const { error: docsError } = await supabase
+        .from('batch_documents')
+        .delete()
+        .eq('batch_id', id);
+
+      if (docsError) throw docsError;
+
+      const { error: txError } = await supabase
+        .from('inventory_transactions')
+        .delete()
+        .eq('batch_id', id);
+
+      if (txError) throw txError;
+
+      const { error: invoiceItemsError } = await supabase
+        .from('sales_invoice_items')
+        .delete()
+        .eq('batch_id', id);
+
+      if (invoiceItemsError) throw invoiceItemsError;
+
+      const { error: challanItemsError } = await supabase
+        .from('delivery_challan_items')
+        .delete()
+        .eq('batch_id', id);
+
+      if (challanItemsError) throw challanItemsError;
+
+      const { error: expensesError } = await supabase
+        .from('finance_expenses')
+        .delete()
+        .eq('batch_id', id);
+
+      if (expensesError) throw expensesError;
+
       const { error } = await supabase
         .from('batches')
-        .update({ is_active: false })
+        .delete()
         .eq('id', id);
 
       if (error) throw error;
+
+      alert('Batch deleted successfully');
       loadBatches();
     } catch (error) {
       console.error('Error deleting batch:', error);
