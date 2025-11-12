@@ -30,7 +30,7 @@ export function Login() {
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-8">
         <div className="flex flex-col items-center mb-8">
           <div className="mb-4">
-            <img src="/src/assets/Untitled-1.svg" alt="Company Logo" className="h-24 w-24" />
+            <img src="/src/assets/Untitled-1.png" alt="Company Logo" className="h-24 w-24" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 text-center">
             PT. SHUBHAM ANZEN

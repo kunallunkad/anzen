@@ -68,7 +68,7 @@ export function Layout({ children }: LayoutProps) {
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <img src="/src/assets/Untitled-1.svg" alt="Logo" className="h-10 w-10" />
+            <img src="/src/assets/Untitled-1.png" alt="Logo" className="h-10 w-10" />
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-bold text-gray-900">PT. SHUBHAM ANZEN</span>
               <span className="text-sm font-bold text-gray-900">PHARMA JAYA</span>
