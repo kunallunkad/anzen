@@ -5,11 +5,7 @@ import { Modal } from '../components/Modal';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Plus, Edit, Trash2, DollarSign, TrendingUp, TrendingDown, CreditCard, Receipt, Paperclip } from 'lucide-react';
-import { BankAccountsManager } from '../components/finance/BankAccountsManager';
-import { ReceivablesManager } from '../components/finance/ReceivablesManager';
-import { PayablesManager } from '../components/finance/PayablesManager';
-import { FileUpload } from '../components/FileUpload';
+import { Plus, Edit, Trash2, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface FinanceExpense {
   id: string;
@@ -18,7 +14,6 @@ interface FinanceExpense {
   expense_date: string;
   description: string | null;
   batch_id: string | null;
-  document_urls: string[] | null;
   created_at: string;
   batches?: {
     batch_number: string;
@@ -30,12 +25,9 @@ interface Batch {
   batch_number: string;
 }
 
-type FinanceTab = 'expenses' | 'banks' | 'receivables' | 'payables';
-
 export function Finance() {
   const { t } = useLanguage();
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<FinanceTab>('expenses');
   const [expenses, setExpenses] = useState<FinanceExpense[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +44,6 @@ export function Finance() {
     expense_date: new Date().toISOString().split('T')[0],
     description: '',
     batch_id: '',
-    document_urls: [] as string[],
   });
 
   useEffect(() => {
@@ -106,7 +97,6 @@ export function Finance() {
             ...formData,
             batch_id: formData.batch_id || null,
             description: formData.description || null,
-            document_urls: formData.document_urls.length > 0 ? formData.document_urls : null,
           })
           .eq('id', editingExpense.id);
 
@@ -118,7 +108,6 @@ export function Finance() {
             ...formData,
             batch_id: formData.batch_id || null,
             description: formData.description || null,
-            document_urls: formData.document_urls.length > 0 ? formData.document_urls : null,
             created_by: user.id,
           }]);
 
@@ -142,7 +131,6 @@ export function Finance() {
       expense_date: expense.expense_date,
       description: expense.description || '',
       batch_id: expense.batch_id || '',
-      document_urls: expense.document_urls || [],
     });
     setModalOpen(true);
   };
@@ -172,7 +160,6 @@ export function Finance() {
       expense_date: new Date().toISOString().split('T')[0],
       description: '',
       batch_id: '',
-      document_urls: [],
     });
   };
 
@@ -241,67 +228,29 @@ export function Finance() {
 
   const canManage = profile?.role === 'admin' || profile?.role === 'accounts';
 
-  const tabs: { id: FinanceTab; label: string; icon: any }[] = [
-    { id: 'expenses', label: 'Expenses', icon: Receipt },
-    { id: 'banks', label: 'Bank Accounts', icon: CreditCard },
-    { id: 'receivables', label: 'Receivables', icon: TrendingUp },
-    { id: 'payables', label: 'Payables', icon: TrendingDown },
-  ];
-
   return (
     <Layout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Finance Management</h1>
-            <p className="text-gray-600 mt-1">Comprehensive financial tracking and reporting</p>
+            <h1 className="text-3xl font-bold text-gray-900">Finance & Expenses</h1>
+            <p className="text-gray-600 mt-1">Track operational expenses and financial overview</p>
           </div>
+          {canManage && (
+            <button
+              onClick={() => {
+                resetForm();
+                setModalOpen(true);
+              }}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+            >
+              <Plus className="w-5 h-5" />
+              Add Expense
+            </button>
+          )}
         </div>
 
-        <div className="bg-white rounded-lg shadow">
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6" aria-label="Tabs">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={[
-                      'flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm',
-                      isActive
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    ].join(' ')}
-                  >
-                    <Icon className="w-5 h-5" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-
-          <div className="p-6">
-            {activeTab === 'expenses' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  {canManage && (
-                    <button
-                      onClick={() => {
-                        resetForm();
-                        setModalOpen(true);
-                      }}
-                      className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition ml-auto"
-                    >
-                      <Plus className="w-5 h-5" />
-                      Add Expense
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
@@ -485,18 +434,6 @@ export function Finance() {
                   placeholder="Additional details about this expense"
                 />
               </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <Paperclip className="w-4 h-4 inline mr-1" />
-                  Attach Documents (Receipts, Photos, etc.)
-                </label>
-                <FileUpload
-                  currentUrls={formData.document_urls}
-                  onUploadComplete={(urls) => setFormData({ ...formData, document_urls: urls })}
-                  folder="expense-documents"
-                />
-              </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
@@ -519,22 +456,6 @@ export function Finance() {
             </div>
           </form>
         </Modal>
-              </div>
-            )}
-
-            {activeTab === 'banks' && (
-              <BankAccountsManager canManage={canManage} />
-            )}
-
-            {activeTab === 'receivables' && (
-              <ReceivablesManager canManage={canManage} />
-            )}
-
-            {activeTab === 'payables' && (
-              <PayablesManager canManage={canManage} />
-            )}
-          </div>
-        </div>
       </div>
     </Layout>
   );

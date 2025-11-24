@@ -4,6 +4,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Save, Building2, Mail, DollarSign, Package, Users, Calendar } from 'lucide-react';
+import { GmailSettings } from '../components/crm/GmailSettings';
 
 interface AppSettings {
   id: string;
@@ -37,7 +38,7 @@ interface UserProfile {
 export function Settings() {
   const { t } = useLanguage();
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<'company' | 'users' | 'system' | 'financial'>('company');
+  const [activeTab, setActiveTab] = useState<'company' | 'users' | 'system' | 'financial' | 'gmail'>('company');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -257,10 +258,27 @@ export function Settings() {
                   System
                 </div>
               </button>
+              <button
+                onClick={() => setActiveTab('gmail')}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition ${
+                  activeTab === 'gmail'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  Gmail
+                </div>
+              </button>
             </nav>
           </div>
 
           <div className="p-6">
+            {activeTab === 'gmail' && (
+              <GmailSettings />
+            )}
+
             {activeTab === 'company' && (
               <form onSubmit={handleSave} className="space-y-6">
                 <div>

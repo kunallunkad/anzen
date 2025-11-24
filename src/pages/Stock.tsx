@@ -101,73 +101,54 @@ export function Stock() {
 
   const columns = [
     {
-      key: 'product_code',
-      label: 'Product Code',
-      render: (item: StockSummary) => (
-        <span className="font-mono text-sm">{item.product_code}</span>
-      )
-    },
-    {
       key: 'product_name',
-      label: 'Product Name',
+      label: 'Product',
       render: (item: StockSummary) => (
-        <div>
-          <div className="font-medium text-gray-900">{item.product_name}</div>
-          <div className="text-xs text-gray-500 capitalize">{item.category}</div>
+        <div className="py-1">
+          <span className="font-medium text-gray-900">{item.product_name}</span>
+          <span className="text-xs text-gray-500 ml-2 capitalize">({item.category})</span>
         </div>
       )
     },
     {
       key: 'stock',
-      label: 'Available Stock',
+      label: 'Stock',
       render: (item: StockSummary) => (
-        <div className="flex items-center gap-2">
-          <span className={`text-2xl font-bold ${getStockStatusColor(item.total_current_stock, item.active_batch_count)}`}>
-            {item.total_current_stock.toLocaleString()}
-          </span>
-          <span className="text-sm text-gray-600">{item.unit}</span>
-        </div>
+        <span className={`font-semibold ${getStockStatusColor(item.total_current_stock, item.active_batch_count)}`}>
+          {item.total_current_stock.toLocaleString()} {item.unit}
+        </span>
       )
     },
     {
       key: 'batches',
-      label: 'Active Batches',
+      label: 'Batches',
       render: (item: StockSummary) => (
-        <div className="text-center">
-          <div className="text-lg font-semibold text-blue-600">
-            {item.active_batch_count}
-          </div>
+        <span className="text-sm">
+          <span className="text-blue-600 font-medium">{item.active_batch_count}</span>
           {item.expired_batch_count > 0 && (
-            <div className="text-xs text-red-600">
-              {item.expired_batch_count} expired
-            </div>
+            <span className="text-red-600 ml-1">({item.expired_batch_count} expired)</span>
           )}
-        </div>
+        </span>
       )
     },
     {
       key: 'expiry',
       label: 'Nearest Expiry',
       render: (item: StockSummary) => (
-        <div>
-          {item.nearest_expiry_date ? (
-            <div className={`text-sm ${
-              isExpired(item.nearest_expiry_date) ? 'text-red-700 font-semibold' :
-              isNearExpiry(item.nearest_expiry_date) ? 'text-orange-600 font-semibold' :
-              'text-gray-700'
-            }`}>
-              {new Date(item.nearest_expiry_date).toLocaleDateString()}
-              {isNearExpiry(item.nearest_expiry_date) && (
-                <div className="flex items-center gap-1 mt-1">
-                  <AlertTriangle className="w-3 h-3" />
-                  <span className="text-xs">Expiring Soon</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <span className="text-gray-400 text-sm">No expiry</span>
-          )}
-        </div>
+        item.nearest_expiry_date ? (
+          <span className={`text-sm ${
+            isExpired(item.nearest_expiry_date) ? 'text-red-700 font-semibold' :
+            isNearExpiry(item.nearest_expiry_date) ? 'text-orange-600 font-semibold' :
+            'text-gray-700'
+          }`}>
+            {new Date(item.nearest_expiry_date).toLocaleDateString()}
+            {isNearExpiry(item.nearest_expiry_date) && (
+              <AlertTriangle className="w-3 h-3 inline ml-1" />
+            )}
+          </span>
+        ) : (
+          <span className="text-gray-400 text-sm">-</span>
+        )
       )
     },
   ];
@@ -175,7 +156,7 @@ export function Stock() {
   const batchColumns = [
     {
       key: 'batch_number',
-      label: 'Batch Number',
+      label: 'Batch',
       render: (batch: DetailedBatch) => (
         <span className="font-mono text-sm">{batch.batch_number}</span>
       )
@@ -184,12 +165,12 @@ export function Stock() {
       key: 'stock',
       label: 'Stock',
       render: (batch: DetailedBatch) => (
-        <span className="font-semibold">{batch.current_stock.toLocaleString()} {selectedProduct?.unit}</span>
+        <span className="font-semibold text-sm">{batch.current_stock.toLocaleString()} {selectedProduct?.unit}</span>
       )
     },
     {
       key: 'import_date',
-      label: 'Import Date',
+      label: 'Imported',
       render: (batch: DetailedBatch) => (
         <span className="text-sm text-gray-600">
           {new Date(batch.import_date).toLocaleDateString()}
@@ -198,14 +179,14 @@ export function Stock() {
     },
     {
       key: 'expiry_date',
-      label: 'Expiry Date',
+      label: 'Expiry',
       render: (batch: DetailedBatch) => (
         <span className={`text-sm ${
           isExpired(batch.expiry_date) ? 'text-red-700 font-semibold' :
           isNearExpiry(batch.expiry_date) ? 'text-orange-600 font-semibold' :
           'text-gray-700'
         }`}>
-          {batch.expiry_date ? new Date(batch.expiry_date).toLocaleDateString() : 'N/A'}
+          {batch.expiry_date ? new Date(batch.expiry_date).toLocaleDateString() : '-'}
         </span>
       )
     },
@@ -223,8 +204,8 @@ export function Stock() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Stock Overview</h1>
-            <p className="text-gray-600 mt-1">Real-time inventory across all batches</p>
+            <h1 className="text-3xl font-bold text-gray-900">Stock Inventory</h1>
+            <p className="text-gray-600 mt-1">Current stock levels across all products</p>
           </div>
           <button
             onClick={goToBatches}
@@ -233,6 +214,44 @@ export function Stock() {
             <Package className="w-5 h-5" />
             View Batches
           </button>
+        </div>
+
+        {selectedProduct && (
+          <div className="bg-blue-50 rounded-lg shadow-md p-4 border-l-4 border-blue-500">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {selectedProduct.product_name} - Batch Details
+              </h2>
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="text-gray-500 hover:text-gray-700 text-xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
+            <DataTable
+              columns={batchColumns}
+              data={productBatches}
+              loading={false}
+            />
+          </div>
+        )}
+
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <DataTable
+            columns={columns}
+            data={stockSummary}
+            loading={loading}
+            onRowClick={handleProductClick}
+          />
+
+          {!loading && stockSummary.length === 0 && (
+            <div className="text-center py-12">
+              <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg">No stock available</p>
+              <p className="text-gray-400 text-sm mt-2">All products are currently out of stock</p>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -275,55 +294,6 @@ export function Stock() {
               <Calendar className="w-10 h-10 text-red-200" />
             </div>
           </div>
-        </div>
-
-        {selectedProduct && (
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {selectedProduct.product_name}
-                </h2>
-                <p className="text-sm text-gray-500">{selectedProduct.product_code}</p>
-              </div>
-              <button
-                onClick={() => setSelectedProduct(null)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <DataTable
-                columns={batchColumns}
-                data={productBatches}
-                loading={false}
-              />
-            </div>
-          </div>
-        )}
-
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Available Stock by Product</h2>
-            <p className="text-sm text-gray-500 mt-1">Click on any product to view batch details</p>
-          </div>
-
-          <DataTable
-            columns={columns}
-            data={stockSummary}
-            loading={loading}
-            onRowClick={handleProductClick}
-          />
-
-          {!loading && stockSummary.length === 0 && (
-            <div className="text-center py-12">
-              <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No stock available</p>
-              <p className="text-gray-400 text-sm mt-2">All products are currently out of stock</p>
-            </div>
-          )}
         </div>
       </div>
     </Layout>

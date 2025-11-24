@@ -38,13 +38,34 @@ export function DataTable<T extends Record<string, any>>({
     setSortConfig({ key, direction });
   };
 
+  const getSearchableValues = (obj: any): string[] => {
+    const values: string[] = [];
+
+    const extractValues = (value: any) => {
+      if (value === null || value === undefined) {
+        return;
+      }
+
+      if (typeof value === 'object' && !Array.isArray(value)) {
+        Object.values(value).forEach(extractValues);
+      } else if (Array.isArray(value)) {
+        value.forEach(extractValues);
+      } else {
+        values.push(String(value));
+      }
+    };
+
+    Object.values(obj).forEach(extractValues);
+    return values;
+  };
+
   const filteredAndSortedData = (() => {
     let result = [...data];
 
     if (searchTerm) {
       result = result.filter((item) =>
-        Object.values(item).some((value) =>
-          String(value).toLowerCase().includes(searchTerm.toLowerCase())
+        getSearchableValues(item).some((value) =>
+          value.toLowerCase().includes(searchTerm.toLowerCase())
         )
       );
     }

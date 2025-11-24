@@ -24,6 +24,7 @@ interface SalesInvoice {
   po_number: string | null;
   payment_terms_days: number | null;
   notes: string | null;
+  linked_challan_ids?: string[] | null;
   customers?: {
     company_name: string;
     gst_vat_type: string;
@@ -232,11 +233,11 @@ export function Sales() {
 
   const loadBatches = async () => {
     try {
+      // Load ALL batches for reference (including 0 stock for delivery challan invoices)
       const { data, error } = await supabase
         .from('batches')
         .select('id, batch_number, product_id, current_stock, import_price, duty_charges, freight_charges, other_charges, import_quantity, import_date, expiry_date')
         .eq('is_active', true)
-        .gt('current_stock', 0)
         .order('import_date', { ascending: true });
 
       if (error) throw error;
@@ -520,24 +521,13 @@ export function Sales() {
       let invoice;
 
       if (editingInvoice) {
-        const oldItems = await loadInvoiceItems(editingInvoice.id);
+        // Delete old items - the database trigger will automatically restore stock
+        const { error: deleteItemsError } = await supabase
+          .from('sales_invoice_items')
+          .delete()
+          .eq('invoice_id', editingInvoice.id);
 
-        // Only restore stock if the old invoice was NOT linked to a delivery challan
-        const wasLinkedToChallan = editingInvoice.linked_challan_ids && editingInvoice.linked_challan_ids.length > 0;
-
-        if (!wasLinkedToChallan) {
-          for (const oldItem of oldItems) {
-            if (oldItem.batch_id) {
-              const batch = batches.find(b => b.id === oldItem.batch_id);
-              if (batch) {
-                await supabase
-                  .from('batches')
-                  .update({ current_stock: batch.current_stock + oldItem.quantity })
-                  .eq('id', oldItem.batch_id);
-              }
-            }
-          }
-        }
+        if (deleteItemsError) throw deleteItemsError;
 
         const { data: updatedInvoice, error: updateError } = await supabase
           .from('sales_invoices')
@@ -561,14 +551,6 @@ export function Sales() {
           .single();
 
         if (updateError) throw updateError;
-
-        const { error: deleteItemsError } = await supabase
-          .from('sales_invoice_items')
-          .delete()
-          .eq('invoice_id', editingInvoice.id);
-
-        if (deleteItemsError) throw deleteItemsError;
-
         invoice = updatedInvoice;
       } else {
         const { data: newInvoice, error: invoiceError } = await supabase
@@ -612,58 +594,15 @@ export function Sales() {
 
       if (itemsError) throw itemsError;
 
-      // Only deduct stock and create transactions if NOT linked to a delivery challan
-      // (Delivery challans already deduct stock when created)
-      const isLinkedToChallan = selectedChallanId || (invoice.linked_challan_ids && invoice.linked_challan_ids.length > 0);
+      // Stock deduction and inventory transactions are handled automatically by database trigger
 
-      if (!isLinkedToChallan) {
-        for (const item of items) {
-          if (item.batch_id) {
-            const batch = batches.find(b => b.id === item.batch_id);
-            if (batch) {
-              const newStock = batch.current_stock - item.quantity;
-
-              // Validate stock availability
-              if (newStock < 0) {
-                throw new Error(`Insufficient stock for batch. Available: ${batch.current_stock}, Required: ${item.quantity}`);
-              }
-
-              const { error: batchError } = await supabase
-                .from('batches')
-                .update({ current_stock: newStock })
-                .eq('id', item.batch_id);
-
-              if (batchError) throw batchError;
-            }
-          }
-
-          const { error: txError } = await supabase
-            .from('inventory_transactions')
-            .insert([{
-              transaction_type: 'sale',
-              product_id: item.product_id,
-              batch_id: item.batch_id || null,
-              quantity: item.quantity,
-              reference_number: formData.invoice_number,
-              notes: `Sales invoice ${formData.invoice_number}`,
-              transaction_date: formData.invoice_date,
-              created_by: user.id,
-            }]);
-
-          if (txError) {
-            console.error('Error creating inventory transaction:', txError);
-            throw txError;
-          }
-        }
-      }
-
+      await loadInvoices();
+      await loadBatches();
       setModalOpen(false);
       resetForm();
-      loadInvoices();
-      loadBatches();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving invoice:', error);
-      alert('Failed to save invoice. Please try again.');
+      alert(`Failed to save invoice: ${error.message || 'Unknown error'}. Please check console for details.`);
     }
   };
 
@@ -1038,44 +977,50 @@ export function Sales() {
 
                   return (
                     <div key={index} className="p-3 bg-gray-50 rounded-lg space-y-2">
-                      <div className="grid grid-cols-6 gap-2 items-end">
-                        <div className="col-span-2">
-                          <label className="block text-xs text-gray-600 mb-1">Product</label>
+                      <div className="grid grid-cols-12 gap-2 items-end">
+                        <div className="col-span-3">
+                          <label className="block text-xs text-gray-600 mb-1">Product *</label>
                           <select
                             value={item.product_id}
                             onChange={(e) => updateItemTotal(index, { ...item, product_id: e.target.value, batch_id: null })}
                             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                             required
                           >
-                            <option value="">Select</option>
+                            <option value="">Select Product</option>
                             {products.map((p) => (
                               <option key={p.id} value={p.id}>{p.product_name}</option>
                             ))}
                           </select>
                         </div>
 
-                        {item.product_id && availableBatches.length > 0 && (
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">Batch</label>
-                            <select
-                              value={item.batch_id || ''}
-                              onChange={(e) => {
-                                const batchId = e.target.value || null;
-                                const suggested = getSuggestedPrice(batchId);
-                                updateItemTotal(index, { ...item, batch_id: batchId, unit_price: suggested });
-                              }}
-                              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">Select</option>
-                              {availableBatches.map((b) => (
-                                <option key={b.id} value={b.id}>{b.batch_number}</option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
+                        <div className="col-span-2">
+                          <label className="block text-xs text-gray-600 mb-1">Batch</label>
+                          <select
+                            value={item.batch_id || ''}
+                            onChange={(e) => {
+                              const batchId = e.target.value || null;
+                              const suggested = getSuggestedPrice(batchId);
+                              updateItemTotal(index, { ...item, batch_id: batchId, unit_price: suggested });
+                            }}
+                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                            disabled={!item.product_id || selectedChallanId !== ''}
+                          >
+                            <option value="">Select Batch</option>
+                            {/* Show only batches with stock > 0 for manual selection */}
+                            {availableBatches.filter(b => b.current_stock > 0).map((b) => (
+                              <option key={b.id} value={b.id}>{b.batch_number} ({b.current_stock} stock)</option>
+                            ))}
+                            {/* Show selected batch even if stock is 0 (from delivery challan) */}
+                            {item.batch_id && availableBatches.find(b => b.id === item.batch_id && b.current_stock === 0) && (
+                              <option key={item.batch_id} value={item.batch_id}>
+                                {availableBatches.find(b => b.id === item.batch_id)?.batch_number} (from challan)
+                              </option>
+                            )}
+                          </select>
+                        </div>
 
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">Qty</label>
+                      <div className="col-span-2">
+                        <label className="block text-xs text-gray-600 mb-1">Quantity *</label>
                         <input
                           type="number"
                           value={item.quantity === 0 ? '' : item.quantity}
@@ -1087,8 +1032,8 @@ export function Sales() {
                         />
                       </div>
 
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">Price</label>
+                      <div className="col-span-2">
+                        <label className="block text-xs text-gray-600 mb-1">Unit Price *</label>
                         <input
                           type="number"
                           value={item.unit_price === 0 ? '' : item.unit_price}
@@ -1100,7 +1045,7 @@ export function Sales() {
                         />
                       </div>
 
-                      <div>
+                      <div className="col-span-1">
                         <label className="block text-xs text-gray-600 mb-1">Tax %</label>
                         <input
                           type="number"
@@ -1112,7 +1057,7 @@ export function Sales() {
                         />
                       </div>
 
-                      <div className="flex items-end gap-2">
+                      <div className="col-span-2 flex items-end gap-2">
                         <div className="flex-1">
                           <label className="block text-xs text-gray-600 mb-1">Total</label>
                           <input
@@ -1122,16 +1067,17 @@ export function Sales() {
                             disabled
                           />
                         </div>
-                          {items.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeItem(index)}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
+                        {items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeItem(index)}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                            title="Remove Item"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                       </div>
 
                       {item.batch_id && costPerUnit > 0 && (

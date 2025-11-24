@@ -6,6 +6,8 @@ interface NavigationContextType {
   navigationData: any;
   setNavigationData: (data: any) => void;
   clearNavigationData: () => void;
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (collapsed: boolean) => void;
 }
 
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
@@ -13,11 +15,12 @@ const NavigationContext = createContext<NavigationContextType | undefined>(undef
 export function NavigationProvider({ children }: { children: React.ReactNode }) {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [navigationData, setNavigationData] = useState<any>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const clearNavigationData = () => setNavigationData(null);
 
   return (
-    <NavigationContext.Provider value={{ currentPage, setCurrentPage, navigationData, setNavigationData, clearNavigationData }}>
+    <NavigationContext.Provider value={{ currentPage, setCurrentPage, navigationData, setNavigationData, clearNavigationData, sidebarCollapsed, setSidebarCollapsed }}>
       {children}
     </NavigationContext.Provider>
   );

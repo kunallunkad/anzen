@@ -307,9 +307,9 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
             </div>
 
             {/* Signature Section */}
-            <div className="grid grid-cols-3 gap-4 print:gap-2">
+            <div className="grid grid-cols-4 gap-3 print:gap-2">
               <div className="border-2 border-black p-2 text-center print:p-1.5">
-                <div className="mb-16 text-xs font-semibold print:mb-12 print:text-[10px]">
+                <div className="mb-16 text-xs font-semibold print:mb-10 print:text-[10px]">
                   Disiapkan Oleh<br/>Prepared By
                 </div>
                 <div className="border-t-2 border-black pt-2 print:pt-1">
@@ -319,7 +319,7 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
                 </div>
               </div>
               <div className="border-2 border-black p-2 text-center print:p-1.5">
-                <div className="mb-16 text-xs font-semibold print:mb-12 print:text-[10px]">
+                <div className="mb-16 text-xs font-semibold print:mb-10 print:text-[10px]">
                   Dikirim Oleh<br/>Delivered By
                 </div>
                 <div className="border-t-2 border-black pt-2 print:pt-1">
@@ -329,7 +329,20 @@ export function DeliveryChallanView({ challan, items, onClose }: DeliveryChallan
                 </div>
               </div>
               <div className="border-2 border-black p-2 text-center print:p-1.5">
-                <div className="mb-16 text-xs font-semibold print:mb-12 print:text-[10px]">
+                <div className="mb-2 text-xs font-semibold print:mb-1 print:text-[10px]">
+                  Pharmacist:
+                </div>
+                <div className="mb-10 print:mb-8">
+                  <div className="h-12 print:h-10"></div>
+                </div>
+                <div className="border-t-2 border-black pt-2 print:pt-1">
+                  <p className="text-xs print:text-[10px]">Tanda Tangan & Tanggal</p>
+                  <p className="text-xs print:text-[10px]">Signature & Date</p>
+                  <p className="text-xs font-semibold mt-1 print:text-[9px] print:mt-0.5">PT. SHUBHAM ANZEN PHARMA JAYA</p>
+                </div>
+              </div>
+              <div className="border-2 border-black p-2 text-center print:p-1.5">
+                <div className="mb-16 text-xs font-semibold print:mb-10 print:text-[10px]">
                   Diterima Oleh<br/>Received By
                 </div>
                 <div className="border-t-2 border-black pt-2 print:pt-1">

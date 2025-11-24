@@ -10,11 +10,13 @@ import { Stock } from './pages/Stock';
 import { Batches } from './pages/Batches';
 import { Inventory } from './pages/Inventory';
 import { CRM } from './pages/CRM';
+import { CRMCommandCenter } from './pages/CRMCommandCenter';
 import { DeliveryChallan } from './pages/DeliveryChallan';
 import { Sales } from './pages/Sales';
 import { Finance } from './pages/Finance';
 import { Settings } from './pages/Settings';
 import { Setup } from './pages/Setup';
+import { GmailCallback } from './pages/GmailCallback';
 import { initializeNotificationChecks } from './utils/notifications';
 
 function AppContent() {
@@ -29,6 +31,10 @@ function AppContent() {
 
   if (window.location.pathname === '/setup') {
     return <Setup />;
+  }
+
+  if (window.location.pathname === '/auth/gmail/callback') {
+    return <GmailCallback />;
   }
 
   if (loading) {
@@ -62,6 +68,8 @@ function AppContent() {
         return <Customers />;
       case 'crm':
         return <CRM />;
+      case 'command-center':
+        return <CRMCommandCenter />;
       case 'delivery-challan':
         return <DeliveryChallan />;
       case 'sales':

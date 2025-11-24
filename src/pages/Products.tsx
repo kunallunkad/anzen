@@ -5,18 +5,19 @@ import { Modal } from '../components/Modal';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Plus, Edit, Trash2, Package } from 'lucide-react';
+import { Plus, Edit, Trash2 } from 'lucide-react';
 
 interface Product {
   id: string;
   product_name: string;
-  product_code: string;
+  product_code: string | null;
   hsn_code: string;
   category: string;
   unit: string;
   packaging_type: string;
   default_supplier: string;
   description: string;
+  min_stock_level: number | null;
   total_quantity: number | null;
   per_pack_weight: number | null;
   pack_type: string | null;
@@ -34,32 +35,19 @@ export function Products() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     product_name: '',
-    product_code: '',
     hsn_code: '',
     category: 'api',
     unit: 'kg',
     packaging_type: '',
     default_supplier: '',
     description: '',
-    total_quantity: '',
-    per_pack_weight: '',
-    pack_type: 'Bag',
+    min_stock_level: '',
   });
-  const [calculatedPacks, setCalculatedPacks] = useState<number>(0);
 
   useEffect(() => {
     loadProducts();
   }, []);
 
-  useEffect(() => {
-    const qty = parseFloat(formData.total_quantity) || 0;
-    const packWeight = parseFloat(formData.per_pack_weight) || 0;
-    if (qty > 0 && packWeight > 0) {
-      setCalculatedPacks(Math.ceil(qty / packWeight));
-    } else {
-      setCalculatedPacks(0);
-    }
-  }, [formData.total_quantity, formData.per_pack_weight]);
 
   const loadProducts = async () => {
     try {
@@ -82,23 +70,18 @@ export function Products() {
     e.preventDefault();
 
     try {
-      const qty = parseFloat(formData.total_quantity) || null;
-      const packWeight = parseFloat(formData.per_pack_weight) || null;
-      const packs = qty && packWeight ? Math.ceil(qty / packWeight) : null;
+      const minStock = parseFloat(formData.min_stock_level) || null;
 
       const dataToSave = {
         product_name: formData.product_name,
-        product_code: formData.product_code,
+        product_code: null,
         hsn_code: formData.hsn_code,
         category: formData.category,
         unit: formData.unit,
         packaging_type: formData.packaging_type,
         default_supplier: formData.default_supplier,
         description: formData.description,
-        total_quantity: qty,
-        per_pack_weight: packWeight,
-        pack_type: formData.pack_type || null,
-        calculated_packs: packs,
+        min_stock_level: minStock,
       };
 
       if (editingProduct) {
@@ -129,43 +112,70 @@ export function Products() {
     setEditingProduct(product);
     setFormData({
       product_name: product.product_name,
-      product_code: product.product_code,
       hsn_code: product.hsn_code,
       category: product.category,
       unit: product.unit,
       packaging_type: product.packaging_type,
       default_supplier: product.default_supplier,
       description: product.description,
-      total_quantity: product.total_quantity?.toString() || '',
-      per_pack_weight: product.per_pack_weight?.toString() || '',
-      pack_type: product.pack_type || 'Bag',
+      min_stock_level: product.min_stock_level?.toString() || '',
     });
     setModalOpen(true);
   };
 
   const handleDelete = async (product: Product) => {
-    if (!confirm('Are you sure you want to delete this product? This will permanently remove all related batches, transactions, and data.')) return;
-
     try {
+      const { data: salesItems } = await supabase
+        .from('sales_invoice_items')
+        .select('id')
+        .eq('product_id', product.id)
+        .limit(1);
+
+      if (salesItems && salesItems.length > 0) {
+        alert('Cannot delete this product. It has been used in sales invoices. Please use the "Deactivate" option instead or contact your administrator.');
+        return;
+      }
+
+      const { data: challanItems } = await supabase
+        .from('delivery_challan_items')
+        .select('id')
+        .eq('product_id', product.id)
+        .limit(1);
+
+      if (challanItems && challanItems.length > 0) {
+        alert('Cannot delete this product. It has been used in delivery challans. Please use the "Deactivate" option instead.');
+        return;
+      }
+
       const { data: batches } = await supabase
         .from('batches')
-        .select('id')
+        .select('id, batch_number')
         .eq('product_id', product.id);
+
+      if (batches && batches.length > 0) {
+        const confirmDelete = confirm(
+          `This product has ${batches.length} batch(es). Deleting this product will permanently remove:\n` +
+          `- ${batches.length} batches\n` +
+          `- All related inventory transactions\n` +
+          `- All related documents\n\n` +
+          `Are you absolutely sure you want to continue?`
+        );
+        
+        if (!confirmDelete) return;
+      } else {
+        if (!confirm('Are you sure you want to delete this product?')) return;
+      }
 
       if (batches && batches.length > 0) {
         for (const batch of batches) {
           await supabase.from('batch_documents').delete().eq('batch_id', batch.id);
           await supabase.from('inventory_transactions').delete().eq('batch_id', batch.id);
-          await supabase.from('sales_invoice_items').delete().eq('batch_id', batch.id);
-          await supabase.from('delivery_challan_items').delete().eq('batch_id', batch.id);
           await supabase.from('finance_expenses').delete().eq('batch_id', batch.id);
         }
 
         await supabase.from('batches').delete().eq('product_id', product.id);
       }
 
-      await supabase.from('sales_invoice_items').delete().eq('product_id', product.id);
-      await supabase.from('delivery_challan_items').delete().eq('product_id', product.id);
       await supabase.from('inventory_transactions').delete().eq('product_id', product.id);
       await supabase.from('product_files').delete().eq('product_id', product.id);
 
@@ -177,10 +187,11 @@ export function Products() {
       if (error) throw error;
 
       alert('Product deleted successfully');
-      loadProducts();
-    } catch (error) {
+      await loadProducts();
+    } catch (error: any) {
       console.error('Error deleting product:', error);
-      alert('Failed to delete product');
+      const errorMessage = error?.message || 'Unknown error occurred';
+      alert(`Failed to delete product: ${errorMessage}\n\nIf this product is in use, consider deactivating it instead.`);
     }
   };
 
@@ -188,22 +199,17 @@ export function Products() {
     setEditingProduct(null);
     setFormData({
       product_name: '',
-      product_code: '',
       hsn_code: '',
       category: 'api',
       unit: 'kg',
       packaging_type: '',
       default_supplier: '',
       description: '',
-      total_quantity: '',
-      per_pack_weight: '',
-      pack_type: 'Bag',
+      min_stock_level: '',
     });
-    setCalculatedPacks(0);
   };
 
   const columns = [
-    { key: 'product_code', label: 'Product Code' },
     { key: 'product_name', label: 'Product Name' },
     { key: 'hsn_code', label: 'HSN Code' },
     {
@@ -214,23 +220,18 @@ export function Products() {
       ),
     },
     {
-      key: 'stock_info',
-      label: 'Stock & Packaging',
-      render: (product: Product) => {
-        if (product.total_quantity && product.calculated_packs) {
-          return (
-            <div className="text-sm">
-              <div className="font-medium">
-                {product.total_quantity} {product.unit}
-              </div>
-              <div className="text-gray-500">
-                ≈ {product.calculated_packs} {product.pack_type}s
-              </div>
-            </div>
-          );
-        }
-        return <span className="text-gray-400">-</span>;
-      },
+      key: 'unit',
+      label: 'Unit',
+      render: (product: Product) => (
+        <span className="capitalize">{product.unit}</span>
+      ),
+    },
+    {
+      key: 'min_stock',
+      label: 'Min Stock Level',
+      render: (product: Product) => (
+        <span>{product.min_stock_level ? `${product.min_stock_level} ${product.unit}` : '-'}</span>
+      ),
     },
   ];
 
@@ -304,21 +305,6 @@ export function Products() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Product Code *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.product_code}
-                onChange={(e) =>
-                  setFormData({ ...formData, product_code: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
                 HSN Code
               </label>
               <input
@@ -368,81 +354,23 @@ export function Products() {
                 <option value="piece">Piece</option>
               </select>
             </div>
-          </div>
 
-          <div className="border-t pt-4">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Package className="w-4 h-4" />
-              Packaging Calculation
-            </h3>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Total Quantity
-                </label>
-                <input
-                  type="number"
-                  step="0.001"
-                  value={formData.total_quantity}
-                  onChange={(e) =>
-                    setFormData({ ...formData, total_quantity: e.target.value })
-                  }
-                  placeholder="e.g., 1000"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                />
-                <p className="text-xs text-gray-500 mt-1">In {formData.unit}</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Per Pack Weight
-                </label>
-                <input
-                  type="number"
-                  step="0.001"
-                  value={formData.per_pack_weight}
-                  onChange={(e) =>
-                    setFormData({ ...formData, per_pack_weight: e.target.value })
-                  }
-                  placeholder="e.g., 60"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                />
-                <p className="text-xs text-gray-500 mt-1">{formData.unit} per pack</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Pack Type
-                </label>
-                <select
-                  value={formData.pack_type}
-                  onChange={(e) =>
-                    setFormData({ ...formData, pack_type: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                >
-                  <option value="Bag">Bag</option>
-                  <option value="Drum">Drum</option>
-                  <option value="Tin">Tin</option>
-                  <option value="Carton">Carton</option>
-                  <option value="Box">Box</option>
-                  <option value="Container">Container</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Minimum Stock Level
+              </label>
+              <input
+                type="number"
+                step="0.001"
+                value={formData.min_stock_level}
+                onChange={(e) =>
+                  setFormData({ ...formData, min_stock_level: e.target.value })
+                }
+                placeholder="e.g., 100"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
+              <p className="text-xs text-gray-500 mt-1">Alert when stock falls below this level (in {formData.unit})</p>
             </div>
-
-            {calculatedPacks > 0 && (
-              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <span className="font-semibold">Calculated Packs:</span> ≈ {calculatedPacks} {formData.pack_type}
-                  {calculatedPacks !== 1 ? 's' : ''}
-                </p>
-                <p className="text-xs text-blue-600 mt-1">
-                  {formData.total_quantity} {formData.unit} ÷ {formData.per_pack_weight} {formData.unit}/pack = {calculatedPacks} packs
-                </p>
-              </div>
-            )}
           </div>
 
           <div>

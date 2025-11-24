@@ -343,9 +343,31 @@ export function Batches() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this batch? This will permanently remove all related data.')) return;
-
     try {
+      const { data: salesItems } = await supabase
+        .from('sales_invoice_items')
+        .select('id, sales_invoices(invoice_number)')
+        .eq('batch_id', id)
+        .limit(1);
+
+      if (salesItems && salesItems.length > 0) {
+        alert('Cannot delete this batch. It has been used in sales invoices. Please delete the related invoices first or contact your administrator.');
+        return;
+      }
+
+      const { data: challanItems } = await supabase
+        .from('delivery_challan_items')
+        .select('id')
+        .eq('batch_id', id)
+        .limit(1);
+
+      if (challanItems && challanItems.length > 0) {
+        alert('Cannot delete this batch. It has been used in delivery challans. Please delete the related delivery challans first.');
+        return;
+      }
+
+      if (!confirm('Are you sure you want to delete this batch? This will permanently remove all related data.')) return;
+
       const { error: docsError } = await supabase
         .from('batch_documents')
         .delete()
@@ -359,20 +381,6 @@ export function Batches() {
         .eq('batch_id', id);
 
       if (txError) throw txError;
-
-      const { error: invoiceItemsError } = await supabase
-        .from('sales_invoice_items')
-        .delete()
-        .eq('batch_id', id);
-
-      if (invoiceItemsError) throw invoiceItemsError;
-
-      const { error: challanItemsError } = await supabase
-        .from('delivery_challan_items')
-        .delete()
-        .eq('batch_id', id);
-
-      if (challanItemsError) throw challanItemsError;
 
       const { error: expensesError } = await supabase
         .from('finance_expenses')
@@ -389,10 +397,11 @@ export function Batches() {
       if (error) throw error;
 
       alert('Batch deleted successfully');
-      loadBatches();
-    } catch (error) {
+      await loadBatches();
+    } catch (error: any) {
       console.error('Error deleting batch:', error);
-      alert('Failed to delete batch. Please try again.');
+      const errorMessage = error?.message || 'Unknown error occurred';
+      alert(`Failed to delete batch: ${errorMessage}`);
     }
   };
 

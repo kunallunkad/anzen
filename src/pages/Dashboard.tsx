@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
+import { TodaysActionsDashboard } from '../components/commandCenter/TodaysActionsDashboard';
 import {
   Package,
   AlertTriangle,
@@ -208,6 +209,26 @@ export function Dashboard() {
             })}
           </div>
         )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+          <div className="lg:col-span-2">
+            <TodaysActionsDashboard />
+          </div>
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Links</h3>
+            <div className="space-y-2">
+              <a href="#" className="block p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition text-blue-700 font-medium">
+                Go to Command Center
+              </a>
+              <a href="#" className="block p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition text-gray-700 font-medium">
+                View All Inquiries
+              </a>
+              <a href="#" className="block p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition text-gray-700 font-medium">
+                Create Manual Inquiry
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
     </Layout>
   );
