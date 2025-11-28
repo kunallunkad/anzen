@@ -454,15 +454,17 @@ export default function SalesOrderForm({ onSuccess, onCancel }: SalesOrderFormPr
                   <label className="text-xs text-gray-600">Quantity *</label>
                   <input
                     type="text"
-                    value={item.quantity}
+                    value={item.quantity === 0 ? '' : item.quantity}
                     onChange={(e) => {
                       const val = e.target.value;
-                      if (val === '' || !isNaN(parseFloat(val))) {
-                        handleItemChange(index, 'quantity', val === '' ? 0 : parseFloat(val));
+                      if (val === '') {
+                        handleItemChange(index, 'quantity', 0);
+                      } else if (!isNaN(parseFloat(val))) {
+                        handleItemChange(index, 'quantity', parseFloat(val));
                       }
                     }}
                     className="w-full border rounded px-2 py-1 text-sm"
-                    placeholder="0"
+                    placeholder="Enter quantity"
                     required
                   />
                 </div>
@@ -471,15 +473,17 @@ export default function SalesOrderForm({ onSuccess, onCancel }: SalesOrderFormPr
                   <label className="text-xs text-gray-600">Unit Price</label>
                   <input
                     type="text"
-                    value={item.unit_price}
+                    value={item.unit_price === 0 ? '' : item.unit_price}
                     onChange={(e) => {
                       const val = e.target.value;
-                      if (val === '' || !isNaN(parseFloat(val))) {
-                        handleItemChange(index, 'unit_price', val === '' ? 0 : parseFloat(val));
+                      if (val === '') {
+                        handleItemChange(index, 'unit_price', 0);
+                      } else if (!isNaN(parseFloat(val))) {
+                        handleItemChange(index, 'unit_price', parseFloat(val));
                       }
                     }}
                     className="w-full border rounded px-2 py-1 text-sm"
-                    placeholder="0.00"
+                    placeholder="Enter price"
                   />
                 </div>
 
@@ -487,11 +491,13 @@ export default function SalesOrderForm({ onSuccess, onCancel }: SalesOrderFormPr
                   <label className="text-xs text-gray-600">Discount %</label>
                   <input
                     type="text"
-                    value={item.discount_percent}
+                    value={item.discount_percent === 0 ? '' : item.discount_percent}
                     onChange={(e) => {
                       const val = e.target.value;
-                      if (val === '' || (!isNaN(parseFloat(val)) && parseFloat(val) >= 0 && parseFloat(val) <= 100)) {
-                        handleItemChange(index, 'discount_percent', val === '' ? 0 : parseFloat(val));
+                      if (val === '') {
+                        handleItemChange(index, 'discount_percent', 0);
+                      } else if (!isNaN(parseFloat(val)) && parseFloat(val) >= 0 && parseFloat(val) <= 100) {
+                        handleItemChange(index, 'discount_percent', parseFloat(val));
                       }
                     }}
                     className="w-full border rounded px-2 py-1 text-sm"
@@ -503,11 +509,13 @@ export default function SalesOrderForm({ onSuccess, onCancel }: SalesOrderFormPr
                   <label className="text-xs text-gray-600">Tax %</label>
                   <input
                     type="text"
-                    value={item.tax_percent}
+                    value={item.tax_percent === 0 ? '' : item.tax_percent}
                     onChange={(e) => {
                       const val = e.target.value;
-                      if (val === '' || (!isNaN(parseFloat(val)) && parseFloat(val) >= 0 && parseFloat(val) <= 100)) {
-                        handleItemChange(index, 'tax_percent', val === '' ? 0 : parseFloat(val));
+                      if (val === '') {
+                        handleItemChange(index, 'tax_percent', 0);
+                      } else if (!isNaN(parseFloat(val)) && parseFloat(val) >= 0 && parseFloat(val) <= 100) {
+                        handleItemChange(index, 'tax_percent', parseFloat(val));
                       }
                     }}
                     className="w-full border rounded px-2 py-1 text-sm"
