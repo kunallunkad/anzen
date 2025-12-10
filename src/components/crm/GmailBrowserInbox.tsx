@@ -12,7 +12,8 @@ import { EmailBodyViewer } from './EmailBodyViewer';
 
 interface GmailConnection {
   id: string;
-  email: string;
+  user_id: string;
+  email_address: string;
   access_token: string;
   refresh_token: string;
   access_token_expires_at: string;
