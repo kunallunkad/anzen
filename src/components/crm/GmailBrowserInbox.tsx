@@ -81,15 +81,7 @@ export function GmailBrowserInbox() {
 
   useEffect(() => {
     loadGmailConnection();
-
-    const interval = setInterval(() => {
-      if (error && !connection) {
-        loadGmailConnection();
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [error, connection]);
+  }, []);
 
   useEffect(() => {
     if (connection) {
@@ -126,6 +118,8 @@ export function GmailBrowserInbox() {
         .select('*')
         .eq('user_id', user.id)
         .eq('is_connected', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
