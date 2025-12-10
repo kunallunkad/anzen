@@ -81,7 +81,15 @@ export function GmailBrowserInbox() {
 
   useEffect(() => {
     loadGmailConnection();
-  }, []);
+
+    const interval = setInterval(() => {
+      if (error && !connection) {
+        loadGmailConnection();
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [error, connection]);
 
   useEffect(() => {
     if (connection) {
@@ -104,8 +112,10 @@ export function GmailBrowserInbox() {
 
   const loadGmailConnection = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        console.error('Auth error:', authError);
         setError('Not authenticated');
         setLoading(false);
         return;
@@ -118,7 +128,10 @@ export function GmailBrowserInbox() {
         .eq('is_connected', true)
         .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error && error.code !== 'PGRST116') {
+        console.error('Database error loading connection:', error);
+        throw error;
+      }
 
       if (!data) {
         setError('No Gmail account connected. Please connect your Gmail account in Settings.');
@@ -127,6 +140,7 @@ export function GmailBrowserInbox() {
       }
 
       setConnection(data);
+      setError(null);
     } catch (err) {
       console.error('Error loading Gmail connection:', err);
       setError('Failed to load Gmail connection');
@@ -713,12 +727,24 @@ export function GmailBrowserInbox() {
               <li>Authorize access to your Gmail account</li>
             </ol>
           </div>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition"
-          >
-            Refresh Page
-          </button>
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={() => {
+                setLoading(true);
+                setError(null);
+                loadGmailConnection();
+              }}
+              className="mt-4 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition"
+            >
+              Retry Connection
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition"
+            >
+              Refresh Page
+            </button>
+          </div>
         </div>
       </div>
     );
