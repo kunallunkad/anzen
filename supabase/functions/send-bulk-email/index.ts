@@ -26,14 +26,15 @@ Deno.serve(async (req: Request) => {
       throw new Error('Missing required fields');
     }
 
-    const { data: connection, error: connectionError } = await supabase
+    const { data: connections, error: connectionError } = await supabase
       .from('gmail_connections')
       .select('*')
       .eq('user_id', userId)
       .eq('is_connected', true)
-      .maybeSingle();
+      .order('created_at', { ascending: false })
+      .limit(1);
 
-    if (connectionError || !connection) {
+    if (connectionError || !connections || connections.length === 0) {
       return new Response(
         JSON.stringify({ success: false, error: 'Gmail not connected. Please connect Gmail in Settings.' }),
         {
@@ -43,6 +44,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const connection = connections[0];
     const tokenExpiry = new Date(connection.access_token_expires_at);
     let accessToken = connection.access_token;
 
