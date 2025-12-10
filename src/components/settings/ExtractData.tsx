@@ -32,26 +32,23 @@ export function ExtractData() {
         return;
       }
 
-      const { data: connections, error: connectionError } = await supabase
+      const { data: connection, error: connectionError } = await supabase
         .from('gmail_connections')
         .select('*')
         .eq('user_id', user.id)
         .eq('is_connected', true)
-        .order('created_at', { ascending: false })
-        .limit(1);
+        .maybeSingle();
 
-      if (connectionError) {
+      if (connectionError && connectionError.code !== 'PGRST116') {
         console.error('Error fetching Gmail connection:', connectionError);
         alert('Error checking Gmail connection. Please try again.');
         return;
       }
 
-      if (!connections || connections.length === 0 || !connections[0].access_token) {
+      if (!connection || !connection.access_token) {
         alert('Gmail is not connected. Please connect Gmail first in Settings → Gmail tab.');
         return;
       }
-
-      const connection = connections[0];
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-gmail-contacts`;
 

@@ -13,7 +13,7 @@ interface GmailConnection {
 }
 
 export function GmailSettings() {
-  const [connections, setConnections] = useState<GmailConnection[]>([]);
+  const [connection, setConnection] = useState<GmailConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
 
@@ -37,10 +37,10 @@ export function GmailSettings() {
         .select('*')
         .eq('user_id', user.id)
         .eq('is_connected', true)
-        .order('created_at', { ascending: false });
+        .maybeSingle();
 
-      if (error) throw error;
-      setConnections(data || []);
+      if (error && error.code !== 'PGRST116') throw error;
+      setConnection(data);
     } catch (error) {
       console.error('Error loading Gmail connection:', error);
     } finally {
@@ -108,21 +108,19 @@ export function GmailSettings() {
     );
   };
 
-  const handleDisconnect = async (connectionId: string, email: string) => {
-    if (!confirm(`Are you sure you want to disconnect ${email}? Email syncing will stop for this account.`)) {
+  const handleDisconnect = async () => {
+    if (!confirm('Are you sure you want to disconnect your Gmail account? Email syncing will stop.')) {
       return;
     }
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { error } = await supabase
         .from('gmail_connections')
-        .update({
-          is_connected: false,
-          sync_enabled: false,
-          access_token: null,
-          refresh_token: null,
-        })
-        .eq('id', connectionId);
+        .delete()
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
@@ -134,14 +132,16 @@ export function GmailSettings() {
     }
   };
 
-  const handleToggleSync = async (connectionId: string, currentState: boolean) => {
+  const handleToggleSync = async () => {
+    if (!connection) return;
+
     try {
       const { error } = await supabase
         .from('gmail_connections')
         .update({
-          sync_enabled: !currentState,
+          sync_enabled: !connection.sync_enabled,
         })
-        .eq('id', connectionId);
+        .eq('id', connection.id);
 
       if (error) throw error;
 
@@ -230,12 +230,10 @@ export function GmailSettings() {
           <h3 className="text-lg font-semibold">Gmail Integration</h3>
         </div>
 
-        {connections.length > 0 ? (
+        {connection?.is_connected ? (
           <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-sm font-medium text-green-700">
-              {connections.length} {connections.length === 1 ? 'Account' : 'Accounts'} Connected
-            </span>
+            <span className="text-sm font-medium text-green-700">Connected</span>
           </div>
         ) : (
           <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg">
@@ -245,7 +243,7 @@ export function GmailSettings() {
         )}
       </div>
 
-      {connections.length === 0 ? (
+      {!connection?.is_connected ? (
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
           <div className="flex items-start gap-4">
             <div className="p-3 bg-blue-50 rounded-lg">
@@ -285,87 +283,71 @@ export function GmailSettings() {
         </div>
       ) : (
         <div className="space-y-4">
-          {connections.map((connection) => (
-            <div key={connection.id} className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-start gap-4 flex-1">
-                  <div className="p-3 bg-green-50 rounded-lg">
-                    <CheckCircle className="w-8 h-8 text-green-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900 mb-1">Gmail Connected</h4>
-                    <p className="text-sm text-gray-600 mb-3">
-                      {connection.email_address}
-                    </p>
-
-                    {connection.last_sync && (
-                      <p className="text-xs text-gray-500">
-                        Last synced: {new Date(connection.last_sync).toLocaleString()}
-                      </p>
-                    )}
-
-                    {connection.access_token_expires_at && (
-                      <p className="text-xs text-gray-500">
-                        Token expires: {new Date(connection.access_token_expires_at).toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handleDisconnect(connection.id, connection.email_address)}
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Disconnect
-                </button>
-              </div>
-
-              <div className="border-t pt-4 space-y-4">
-                <h4 className="font-semibold text-gray-900">Sync Settings</h4>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Automatic Email Sync</p>
-                    <p className="text-xs text-gray-500">Fetch new emails every 10 minutes</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={connection.sync_enabled}
-                      onChange={() => handleToggleSync(connection.id, connection.sync_enabled)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                <div className="pt-4 border-t">
-                  <button
-                    onClick={handleManualSync}
-                    disabled={syncing}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition text-sm font-medium disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                    {syncing ? 'Syncing...' : 'Sync Now'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-
           <div className="bg-white rounded-lg shadow p-6">
-            <h4 className="font-semibold text-gray-900 mb-3">Connect Another Gmail Account</h4>
-            <p className="text-sm text-gray-600 mb-4">
-              You can connect multiple Gmail accounts for different purposes (sales, support, etc.)
-            </p>
-            <button
-              onClick={handleConnectGmail}
-              className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-medium"
-            >
-              <Mail className="w-5 h-5" />
-              Connect Another Account
-            </button>
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-4 flex-1">
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-gray-900 mb-1">Gmail Connected</h4>
+                  <p className="text-sm text-gray-600 mb-3">
+                    {connection.email_address}
+                  </p>
+
+                  {connection.last_sync && (
+                    <p className="text-xs text-gray-500">
+                      Last synced: {new Date(connection.last_sync).toLocaleString()}
+                    </p>
+                  )}
+
+                  {connection.access_token_expires_at && (
+                    <p className="text-xs text-gray-500">
+                      Token expires: {new Date(connection.access_token_expires_at).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={handleDisconnect}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition"
+              >
+                <LogOut className="w-4 h-4" />
+                Disconnect
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6 space-y-4">
+            <h4 className="font-semibold text-gray-900">Sync Settings</h4>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Automatic Email Sync</p>
+                <p className="text-xs text-gray-500">Fetch new emails every 10 minutes</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={connection.sync_enabled}
+                  onChange={handleToggleSync}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+
+            <div className="pt-4 border-t">
+              <button
+                onClick={handleManualSync}
+                disabled={syncing}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition text-sm font-medium disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Syncing...' : 'Sync Now'}
+              </button>
+            </div>
           </div>
 
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">

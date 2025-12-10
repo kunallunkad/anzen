@@ -104,21 +104,18 @@ export function BulkEmailComposer({ selectedCustomers, onClose, onComplete }: Bu
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data: gmailConnections } = await supabase
+      const { data: gmailConnection } = await supabase
         .from('gmail_connections')
         .select('*')
         .eq('user_id', user.id)
         .eq('is_connected', true)
-        .order('created_at', { ascending: false })
-        .limit(1);
+        .maybeSingle();
 
-      if (!gmailConnections || gmailConnections.length === 0) {
+      if (!gmailConnection) {
         alert('Gmail not connected. Please connect Gmail in Settings first.');
         setSending(false);
         return;
       }
-
-      const gmailConnection = gmailConnections[0];
 
       for (let i = 0; i < selectedCustomers.length; i++) {
         const customer = selectedCustomers[i];
