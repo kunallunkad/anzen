@@ -114,7 +114,7 @@ export function GmailCallback() {
           sync_enabled: true,
           last_sync: null,
         }, {
-          onConflict: 'user_id'
+          onConflict: 'user_id,email_address'
         });
 
       if (dbError) {
