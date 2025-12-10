@@ -26,40 +26,55 @@ interface GmailMessage {
 function decodeBase64Url(str: string): string {
   try {
     const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
-    return atob(base64);
+    const binaryString = atob(base64);
+
+    // Convert binary string to Uint8Array
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // Decode as UTF-8
+    const decoder = new TextDecoder('utf-8');
+    return decoder.decode(bytes);
   } catch {
     return '';
   }
 }
 
 function extractEmailBody(payload: any): string {
+  let htmlBody = '';
+  let textBody = '';
+
+  function traverse(part: any) {
+    if (part.mimeType === 'text/html' && part.body?.data) {
+      const decoded = decodeBase64Url(part.body.data);
+      if (decoded && decoded.length > htmlBody.length) {
+        htmlBody = decoded;
+      }
+    } else if (part.mimeType === 'text/plain' && part.body?.data) {
+      const decoded = decodeBase64Url(part.body.data);
+      if (decoded && decoded.length > textBody.length) {
+        textBody = decoded;
+      }
+    }
+
+    if (part.parts && Array.isArray(part.parts)) {
+      for (const subPart of part.parts) {
+        traverse(subPart);
+      }
+    }
+  }
+
   if (payload.body?.data) {
     return decodeBase64Url(payload.body.data);
   }
 
   if (payload.parts) {
-    for (const part of payload.parts) {
-      if (part.mimeType === 'text/plain' && part.body?.data) {
-        return decodeBase64Url(part.body.data);
-      }
-    }
-
-    for (const part of payload.parts) {
-      if (part.mimeType === 'text/html' && part.body?.data) {
-        const html = decodeBase64Url(part.body.data);
-        return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
-      }
-    }
-
-    for (const part of payload.parts) {
-      if (part.parts) {
-        const nestedBody = extractEmailBody(part);
-        if (nestedBody) return nestedBody;
-      }
-    }
+    traverse(payload);
   }
 
-  return '';
+  return htmlBody || textBody || '';
 }
 
 function getHeader(headers: Array<{ name: string; value: string }>, name: string): string {
@@ -76,244 +91,210 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Missing authorization header');
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
+    const { data: { user } } = await supabase.auth.getUser(req.headers.get('Authorization')?.split(' ')[1] || '');
+    if (!user) {
       throw new Error('Unauthorized');
     }
 
-    const { data: connection, error: connError } = await supabase
+    const { data: connections, error: connectionsError } = await supabase
       .from('gmail_connections')
       .select('*')
       .eq('user_id', user.id)
       .eq('is_connected', true)
-      .maybeSingle();
+      .eq('sync_enabled', true);
 
-    if (connError || !connection) {
+    if (connectionsError) throw connectionsError;
+    if (!connections || connections.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'Gmail not connected' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'No active Gmail connections found' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
       );
     }
 
-    const now = new Date();
-    const expiresAt = new Date(connection.access_token_expires_at);
-    let accessToken = connection.access_token;
+    let totalMessages = 0;
+    let totalProcessed = 0;
+    let totalInquiries = 0;
 
-    if (now >= expiresAt) {
-      const clientId = Deno.env.get('VITE_GOOGLE_CLIENT_ID');
-      const clientSecret = Deno.env.get('VITE_GOOGLE_CLIENT_SECRET');
+    for (const connection of connections) {
+      try {
+        const tokenExpiry = new Date(connection.access_token_expires_at);
+        let accessToken = connection.access_token;
 
-      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: clientId!,
-          client_secret: clientSecret!,
-          refresh_token: connection.refresh_token,
-          grant_type: 'refresh_token',
-        }),
-      });
+        if (tokenExpiry <= new Date()) {
+          const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              client_id: Deno.env.get('GMAIL_CLIENT_ID'),
+              client_secret: Deno.env.get('GMAIL_CLIENT_SECRET'),
+              refresh_token: connection.refresh_token,
+              grant_type: 'refresh_token',
+            }),
+          });
 
-      if (!tokenResponse.ok) {
-        throw new Error('Failed to refresh access token');
-      }
-
-      const tokenData = await tokenResponse.json();
-      accessToken = tokenData.access_token;
-
-      const newExpiresAt = new Date();
-      newExpiresAt.setSeconds(newExpiresAt.getSeconds() + tokenData.expires_in);
-
-      await supabase
-        .from('gmail_connections')
-        .update({
-          access_token: accessToken,
-          access_token_expires_at: newExpiresAt.toISOString(),
-        })
-        .eq('id', connection.id);
-    }
-
-    const query = 'label:inbox is:unread';
-    const gmailResponse = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=50`,
-      { headers: { 'Authorization': `Bearer ${accessToken}` } }
-    );
-
-    if (!gmailResponse.ok) {
-      throw new Error('Failed to fetch Gmail messages');
-    }
-
-    const gmailData = await gmailResponse.json();
-    const messages = gmailData.messages || [];
-
-    let processedCount = 0;
-    let newInquiriesCount = 0;
-
-    // Process emails in parallel batches of 5 for speed
-    const batchSize = 5;
-    for (let i = 0; i < messages.length; i += batchSize) {
-      const batch = messages.slice(i, i + batchSize);
-
-      const batchPromises = batch.map(async (message) => {
-        try {
-          const messageResponse = await fetch(
-            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}`,
-            { headers: { 'Authorization': `Bearer ${accessToken}` } }
-          );
-
-          if (!messageResponse.ok) return null;
-
-          const messageData: GmailMessage = await messageResponse.json();
-          const headers = messageData.payload.headers;
-
-          const subject = getHeader(headers, 'subject');
-          const from = getHeader(headers, 'from');
-          const fromEmail = from.match(/<(.+?)>/)?.[1] || from;
-          const fromName = from.replace(/<.+?>/, '').trim();
-          const body = extractEmailBody(messageData.payload);
-          const receivedDate = new Date(parseInt(messageData.internalDate));
-
-          const { data: existing } = await supabase
-            .from('crm_email_inbox')
-            .select('id')
-            .eq('message_id', messageData.id)
-            .maybeSingle();
-
-          if (existing) return null;
-
-          // Call AI parser to analyze email
-          let isInquiry = false;
-          let parsedData = null;
-
-          try {
-            const parseResponse = await fetch(`${supabaseUrl}/functions/v1/parse-pharma-email`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabaseServiceKey}`,
-              },
-              body: JSON.stringify({
-                emailSubject: subject,
-                emailBody: body,
-                fromEmail: fromEmail,
-                fromName: fromName,
-              }),
-            });
-
-            if (parseResponse.ok) {
-              const parseResult = await parseResponse.json();
-              if (parseResult.success && parseResult.data) {
-                parsedData = parseResult.data;
-                isInquiry = (
-                  (parsedData.productName && parsedData.productName.length > 2) &&
-                  parsedData.confidenceScore >= 0.5
-                );
-              }
-            }
-          } catch (parseError) {
-            console.error('Failed to parse email:', parseError);
+          if (!refreshResponse.ok) {
+            console.error('Failed to refresh token for connection:', connection.id);
+            continue;
           }
 
-          // Insert email into inbox
-          // Note: is_processed is set to false for inquiries so they appear in Command Center and CRM Email Inbox
-          const { data: insertedEmail, error: insertError } = await supabase
-            .from('crm_email_inbox')
-            .insert({
-              gmail_connection_id: connection.id,
-              message_id: messageData.id,
-              thread_id: messageData.threadId,
-              subject,
-              from_email: fromEmail,
-              from_name: fromName,
-              body: body,
-              received_date: receivedDate.toISOString(),
-              is_processed: false,
-              is_inquiry: isInquiry,
+          const refreshData = await refreshResponse.json();
+          accessToken = refreshData.access_token;
+
+          await supabase
+            .from('gmail_connections')
+            .update({
+              access_token: accessToken,
+              access_token_expires_at: new Date(Date.now() + refreshData.expires_in * 1000).toISOString(),
             })
-            .select()
-            .single();
+            .eq('id', connection.id);
+        }
 
-          if (insertError || !insertedEmail) return null;
+        const messagesResponse = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&q=is:unread`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          }
+        );
 
-          // If it's an inquiry, create inquiry record
-          if (isInquiry && parsedData) {
-            const { data: inquiryData, error: inquiryError } = await supabase
-              .from('crm_inquiries')
+        if (!messagesResponse.ok) {
+          console.error('Failed to fetch messages for connection:', connection.id);
+          continue;
+        }
+
+        const messagesData = await messagesResponse.json();
+        const messageList = messagesData.messages || [];
+        totalMessages += messageList.length;
+
+        const batchPromises = messageList.slice(0, 5).map(async (message: { id: string }) => {
+          try {
+            const messageResponse = await fetch(
+              `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}?format=full`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${accessToken}`,
+                },
+              }
+            );
+
+            if (!messageResponse.ok) return null;
+
+            const messageData: GmailMessage = await messageResponse.json();
+            const headers = messageData.payload.headers;
+            const subject = getHeader(headers, 'subject');
+            const from = getHeader(headers, 'from');
+            const fromEmail = from.match(/<(.+?)>/)?.[1] || from;
+            const fromName = from.replace(/<.+?>/, '').trim();
+            const body = extractEmailBody(messageData.payload);
+            const receivedDate = new Date(parseInt(messageData.internalDate));
+
+            const { data: existing } = await supabase
+              .from('crm_email_inbox')
+              .select('id')
+              .eq('message_id', messageData.id)
+              .maybeSingle();
+
+            if (existing) return null;
+
+            let isInquiry = false;
+            let parsedData = null;
+
+            try {
+              const parseResponse = await fetch(`${supabaseUrl}/functions/v1/parse-pharma-email`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${supabaseServiceKey}`,
+                },
+                body: JSON.stringify({
+                  emailSubject: subject,
+                  emailBody: body,
+                  fromEmail: fromEmail,
+                  fromName: fromName,
+                  receivedDate: receivedDate.toISOString(),
+                }),
+              });
+
+              if (parseResponse.ok) {
+                const parseResult = await parseResponse.json();
+                if (parseResult.success && parseResult.data) {
+                  parsedData = parseResult.data;
+                  isInquiry = (
+                    (parsedData.productName && parsedData.productName.length > 2) &&
+                    parsedData.confidenceScore >= 0.5
+                  );
+                }
+              }
+            } catch (parseError) {
+              console.error('Failed to parse email:', parseError);
+            }
+
+            const { data: insertedEmail, error: insertError } = await supabase
+              .from('crm_email_inbox')
               .insert({
-                inquiry_date: receivedDate.toISOString(),
-                product_name: parsedData.productName || 'Unknown Product',
-                quantity: parsedData.quantity || '',
-                supplier_name: parsedData.supplierName,
-                supplier_country: parsedData.supplierCountry,
-                company_name: parsedData.companyName,
-                contact_person: parsedData.contactPerson,
-                contact_email: fromEmail,
-                contact_phone: parsedData.contactPhone,
-                coa_sent: parsedData.coaRequested || false,
-                msds_sent: parsedData.msdsRequested || false,
-                sample_sent: parsedData.sampleRequested || false,
-                price_quoted: parsedData.priceRequested || false,
-                purpose_icons: parsedData.purposeIcons,
-                delivery_date_expected: parsedData.deliveryDateExpected,
-                priority: parsedData.urgency || 'medium',
-                status: 'new',
-                source: 'email',
-                remarks: parsedData.remarks,
-                source_email_id: insertedEmail.id,
-                ai_confidence_score: parsedData.confidenceScore,
+                gmail_connection_id: connection.id,
+                message_id: messageData.id,
+                thread_id: messageData.threadId,
+                subject,
+                from_email: fromEmail,
+                from_name: fromName,
+                body: body,
+                received_date: receivedDate.toISOString(),
+                is_processed: false,
+                is_inquiry: isInquiry,
               })
               .select()
               .single();
 
-            if (inquiryError) {
-              console.error('Error creating inquiry for email:', insertedEmail.id, inquiryError);
-              // Continue processing even if inquiry creation fails
-            } else {
-              console.log('Successfully created inquiry:', inquiryData?.inquiry_number);
+            if (insertError || !insertedEmail) return null;
+
+            if (isInquiry && parsedData) {
+              await supabase
+                .from('crm_email_inbox')
+                .update({
+                  parsed_data: parsedData,
+                })
+                .eq('id', insertedEmail.id);
+
+              console.log('Email marked as inquiry for manual review:', insertedEmail.id);
             }
 
-            return { processed: true, inquiry: !inquiryError };
+            return { processed: true, inquiry: isInquiry };
+          } catch (error) {
+            console.error('Error processing message:', error);
+            return null;
           }
+        });
 
-          return { processed: true, inquiry: false };
-        } catch (error) {
-          console.error('Error processing message:', error);
-          return null;
-        }
-      });
+        const batchResults = await Promise.all(batchPromises);
+        const validResults = batchResults.filter(r => r !== null);
+        totalProcessed += validResults.length;
+        totalInquiries += validResults.filter(r => r.inquiry).length;
 
-      const batchResults = await Promise.all(batchPromises);
+        await supabase
+          .from('gmail_connections')
+          .update({ last_sync: new Date().toISOString() })
+          .eq('id', connection.id);
 
-      for (const result of batchResults) {
-        if (result?.processed) {
-          processedCount++;
-          if (result.inquiry) newInquiriesCount++;
-        }
+      } catch (connectionError) {
+        console.error('Error processing connection:', connection.id, connectionError);
       }
     }
-
-    await supabase
-      .from('gmail_connections')
-      .update({ last_sync: new Date().toISOString() })
-      .eq('id', connection.id);
 
     return new Response(
       JSON.stringify({
         success: true,
-        processedCount,
-        newInquiriesCount,
-        totalMessages: messages.length,
+        totalMessages,
+        processedCount: totalProcessed,
+        newInquiriesCount: totalInquiries,
       }),
       {
         headers: {
@@ -327,7 +308,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || 'Failed to sync emails'
+        error: error.message || 'Failed to sync emails',
       }),
       {
         status: 500,

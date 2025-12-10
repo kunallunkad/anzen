@@ -1,0 +1,385 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+};
+
+const INTERNAL_DOMAINS = ['anzen.co.in', 'shubham.co.in', 'shubham.com'];
+const INTERNAL_EMAILS = ['lunkad.v@gmail.com', 'sumathi.lunkad@gmail.com'];
+
+interface EmailAddress {
+  email: string;
+  name?: string;
+  field?: string;
+}
+
+interface ExtractedContact {
+  companyName: string;
+  customerName: string;
+  emailIds: string[];
+  phone: string;
+  mobile: string;
+  website: string;
+  address: string;
+  source: string;
+}
+
+function isInternalEmail(email: string): boolean {
+  const lowerEmail = email.toLowerCase();
+
+  if (INTERNAL_EMAILS.some(internal => lowerEmail === internal.toLowerCase())) {
+    return true;
+  }
+
+  const domain = email.split('@')[1]?.toLowerCase();
+  return INTERNAL_DOMAINS.some(internalDomain => domain === internalDomain);
+}
+
+function extractPhoneNumber(text: string): string[] {
+  const phoneRegex = /(\+?\d{1,4}[-.\s]?)?(\(?\d{2,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,4}/g;
+  const matches = text.match(phoneRegex) || [];
+  return matches.map(phone => phone.trim());
+}
+
+function extractWebsite(text: string): string[] {
+  const urlRegex = /(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/g;
+  const matches = text.match(urlRegex) || [];
+  return matches.filter(url => !url.includes('@') && !url.includes('gmail.com') && !url.includes('yahoo.com'));
+}
+
+function extractCompanyFromDomain(email: string): string {
+  const domain = email.split('@')[1];
+  if (!domain || domain.includes('gmail') || domain.includes('yahoo') || domain.includes('hotmail') || domain.includes('outlook')) {
+    return '';
+  }
+
+  const companyName = domain.split('.')[0];
+  let formatted = companyName
+    .replace(/[-_]/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
+  if (domain.endsWith('.co.id') && !formatted.toLowerCase().startsWith('pt')) {
+    formatted = 'PT ' + formatted;
+  }
+
+  return formatted;
+}
+
+function extractNameFromEmail(email: string): string {
+  const namePart = email.split('@')[0];
+  return namePart
+    .replace(/[._-]/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+function parseSignature(text: string): { name?: string; company?: string; phone?: string; mobile?: string; website?: string; address?: string } {
+  const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+  let name = '';
+  let company = '';
+  let phone = '';
+  let mobile = '';
+  let website = '';
+  let address = '';
+
+  const invalidPatterns = [
+    /^-+$/,
+    /forwarded message/i,
+    /original message/i,
+    /^from:/i,
+    /^to:/i,
+    /^subject:/i,
+    /^date:/i,
+    /regards/i,
+    /thanks/i,
+    /^best/i,
+    /sincerely/i,
+  ];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lowerLine = line.toLowerCase();
+
+    const isInvalid = invalidPatterns.some(pattern => pattern.test(line));
+    if (isInvalid) continue;
+
+    if (i === 0 && line.length < 50 && line.length > 2) {
+      name = line;
+    }
+
+    if (lowerLine.includes('phone:') || lowerLine.includes('tel:') || lowerLine.includes('mobile:') || lowerLine.includes('cell:')) {
+      const phones = extractPhoneNumber(line);
+      if (lowerLine.includes('mobile') || lowerLine.includes('cell')) {
+        mobile = phones[0] || '';
+      } else {
+        phone = phones[0] || '';
+      }
+    }
+
+    if (lowerLine.includes('www.') || lowerLine.includes('http')) {
+      const websites = extractWebsite(line);
+      website = websites[0] || '';
+    }
+
+    if (lowerLine.includes('address:') || lowerLine.includes('location:')) {
+      address = line.replace(/address:/gi, '').replace(/location:/gi, '').trim();
+    }
+
+    if (!company && line.length < 100 && i > 0 && i < 5) {
+      const hasContact = lowerLine.includes('phone') || lowerLine.includes('email') || lowerLine.includes('www');
+      if (!hasContact) {
+        company = line;
+      }
+    }
+  }
+
+  return { name, company, phone, mobile, website, address };
+}
+
+async function fetchGmailMessages(accessToken: string, maxResults = 500): Promise<any[]> {
+  const messages: any[] = [];
+  let pageToken = '';
+
+  try {
+    while (messages.length < maxResults) {
+      const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=100${pageToken ? `&pageToken=${pageToken}` : ''}`;
+
+      const listResponse = await fetch(listUrl, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!listResponse.ok) {
+        throw new Error(`Gmail API error: ${listResponse.statusText}`);
+      }
+
+      const listData = await listResponse.json();
+
+      if (!listData.messages || listData.messages.length === 0) {
+        break;
+      }
+
+      for (const message of listData.messages) {
+        const detailUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}?format=full`;
+
+        const detailResponse = await fetch(detailUrl, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+
+        if (detailResponse.ok) {
+          const detailData = await detailResponse.json();
+          messages.push(detailData);
+        }
+
+        if (messages.length >= maxResults) {
+          break;
+        }
+      }
+
+      if (!listData.nextPageToken) {
+        break;
+      }
+
+      pageToken = listData.nextPageToken;
+    }
+  } catch (error) {
+    console.error('Error fetching Gmail messages:', error);
+  }
+
+  return messages;
+}
+
+function extractEmailAddresses(headers: any[]): EmailAddress[] {
+  const addresses: EmailAddress[] = [];
+  const fields = ['from', 'to', 'cc', 'bcc'];
+
+  for (const field of fields) {
+    const header = headers.find(h => h.name.toLowerCase() === field);
+    if (header) {
+      const emailRegex = /([^<\s]+@[^>\s]+)/g;
+      const nameRegex = /([^<]+)<([^>]+)>/g;
+
+      const emails = header.value.match(emailRegex) || [];
+      const namesWithEmails = [...header.value.matchAll(nameRegex)];
+
+      for (const email of emails) {
+        const nameMatch = namesWithEmails.find(nm => nm[2] === email);
+        addresses.push({
+          email: email.trim(),
+          name: nameMatch ? nameMatch[1].trim().replace(/"/g, '') : undefined,
+          field: field,
+        });
+      }
+    }
+  }
+
+  return addresses;
+}
+
+function extractContacts(messages: any[]): Map<string, ExtractedContact> {
+  const contactsMap = new Map<string, ExtractedContact>();
+
+  for (const message of messages) {
+    try {
+      const headers = message.payload.headers;
+      const addresses = extractEmailAddresses(headers);
+
+      const fromAddresses = addresses.filter(addr => addr.field === 'from');
+
+      let body = '';
+      if (message.payload.body && message.payload.body.data) {
+        body = atob(message.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+      } else if (message.payload.parts) {
+        for (const part of message.payload.parts) {
+          if (part.mimeType === 'text/plain' && part.body && part.body.data) {
+            body += atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+          }
+        }
+      }
+
+      const signature = parseSignature(body);
+      const phones = extractPhoneNumber(body);
+      const websites = extractWebsite(body);
+
+      for (const addr of fromAddresses) {
+        if (isInternalEmail(addr.email)) {
+          continue;
+        }
+
+        if (addr.email.includes('noreply') || addr.email.includes('no-reply')) {
+          continue;
+        }
+
+        const domain = addr.email.split('@')[1];
+        const isGenericEmail = domain && (domain.includes('gmail') || domain.includes('yahoo') || domain.includes('hotmail') || domain.includes('outlook'));
+
+        const companyKey = isGenericEmail ? addr.email : domain;
+
+        let contact = contactsMap.get(companyKey);
+
+        if (!contact) {
+          contact = {
+            companyName: signature.company || extractCompanyFromDomain(addr.email),
+            customerName: signature.name || addr.name || extractNameFromEmail(addr.email),
+            emailIds: [addr.email],
+            phone: signature.phone || phones[0] || '',
+            mobile: signature.mobile || phones[1] || '',
+            website: signature.website || websites[0] || '',
+            address: signature.address || '',
+            source: 'Gmail',
+          };
+          contactsMap.set(companyKey, contact);
+        } else {
+          if (!contact.emailIds.includes(addr.email)) {
+            contact.emailIds.push(addr.email);
+          }
+
+          if (!contact.customerName && (signature.name || addr.name)) {
+            contact.customerName = signature.name || addr.name || contact.customerName;
+          }
+
+          if (!contact.companyName && signature.company) {
+            contact.companyName = signature.company;
+          }
+
+          if (!contact.phone && (signature.phone || phones[0])) {
+            contact.phone = signature.phone || phones[0] || '';
+          }
+
+          if (!contact.mobile && (signature.mobile || phones[1])) {
+            contact.mobile = signature.mobile || phones[1] || '';
+          }
+
+          if (!contact.website && (signature.website || websites[0])) {
+            contact.website = signature.website || websites[0] || '';
+          }
+
+          if (!contact.address && signature.address) {
+            contact.address = signature.address;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error processing message:', error);
+    }
+  }
+
+  return contactsMap;
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
+  }
+
+  try {
+    const { access_token, max_emails = 500 } = await req.json();
+
+    if (!access_token) {
+      return new Response(
+        JSON.stringify({ error: 'Access token is required' }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
+    const messages = await fetchGmailMessages(access_token, max_emails);
+    const contactsMap = extractContacts(messages);
+
+    const contacts = Array.from(contactsMap.values()).map(contact => ({
+      ...contact,
+      emailIds: contact.emailIds.join('; '),
+    }));
+
+    const filteredContacts = contacts.filter(c =>
+      c.companyName || c.customerName || c.emailIds.length > 0
+    );
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        total_emails: messages.length,
+        total_contacts: filteredContacts.length,
+        contacts: filteredContacts,
+      }),
+      {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+  } catch (error) {
+    console.error('Error:', error);
+    return new Response(
+      JSON.stringify({
+        error: error.message || 'An error occurred',
+        success: false
+      }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+  }
+});
