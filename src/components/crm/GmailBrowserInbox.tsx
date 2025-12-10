@@ -115,18 +115,17 @@ export function GmailBrowserInbox() {
         .select('*')
         .eq('user_id', user.id)
         .eq('is_connected', true)
-        .order('created_at', { ascending: false })
-        .limit(1);
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') throw error;
 
-      if (!data || data.length === 0) {
+      if (!data) {
         setError('No Gmail account connected. Please connect your Gmail account in Settings.');
         setLoading(false);
         return;
       }
 
-      setConnection(data[0]);
+      setConnection(data);
     } catch (err) {
       console.error('Error loading Gmail connection:', err);
       setError('Failed to load Gmail connection');
