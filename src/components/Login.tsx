@@ -5,7 +5,7 @@ import { LogIn } from 'lucide-react';
 import logo from '../assets/Untitled-1.svg';
 
 export function Login() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -18,9 +18,9 @@ export function Login() {
     setLoading(true);
 
     try {
-      await signIn(email, password);
+      await signIn(username, password);
     } catch (err) {
-      setError('Invalid email or password');
+      setError('Invalid username or password');
     } finally {
       setLoading(false);
     }
@@ -50,18 +50,20 @@ export function Login() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              {t('auth.email')}
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+              Username
             </label>
             <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
+              autoComplete="username"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-              placeholder="you@example.com"
+              placeholder="username"
             />
+            <p className="text-xs text-gray-500 mt-1">Enter your username (e.g., admin, kunal, sales)</p>
           </div>
 
           <div>

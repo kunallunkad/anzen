@@ -3,8 +3,11 @@ import { Layout } from '../components/Layout';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Save, Building2, Mail, DollarSign, Package, Users, Calendar } from 'lucide-react';
+import { Save, Building2, Mail, DollarSign, Package, Users, Calendar, FileText, Download } from 'lucide-react';
 import { GmailSettings } from '../components/crm/GmailSettings';
+import { UserManagement } from '../components/settings/UserManagement';
+import { EmailTemplates } from '../components/settings/EmailTemplates';
+import { ExtractData } from '../components/settings/ExtractData';
 
 interface AppSettings {
   id: string;
@@ -28,17 +31,19 @@ interface AppSettings {
 
 interface UserProfile {
   id: string;
+  username?: string;
   email: string;
   full_name: string;
   role: 'admin' | 'accounts' | 'sales' | 'warehouse';
-  language: string;
+  language?: string;
   is_active: boolean;
+  created_at?: string;
 }
 
 export function Settings() {
   const { t } = useLanguage();
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<'company' | 'users' | 'system' | 'financial' | 'gmail'>('company');
+  const [activeTab, setActiveTab] = useState<'company' | 'users' | 'system' | 'financial' | 'gmail' | 'templates' | 'extract'>('company');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -111,13 +116,14 @@ export function Settings() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('*')
+        .select('id, email, full_name, role, is_active, created_at, username')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
       console.error('Error loading users:', error);
+      setUsers([]);
     }
   };
 
@@ -159,20 +165,6 @@ export function Settings() {
     }
   };
 
-  const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({ is_active: !currentStatus })
-        .eq('id', userId);
-
-      if (error) throw error;
-      loadUsers();
-    } catch (error) {
-      console.error('Error updating user status:', error);
-      alert('Failed to update user status.');
-    }
-  };
 
   if (profile?.role !== 'admin') {
     return (
@@ -271,12 +263,46 @@ export function Settings() {
                   Gmail
                 </div>
               </button>
+              <button
+                onClick={() => setActiveTab('templates')}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition ${
+                  activeTab === 'templates'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Email Templates
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('extract')}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition ${
+                  activeTab === 'extract'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Download className="w-4 h-4" />
+                  Extract Data
+                </div>
+              </button>
             </nav>
           </div>
 
           <div className="p-6">
             {activeTab === 'gmail' && (
               <GmailSettings />
+            )}
+
+            {activeTab === 'templates' && (
+              <EmailTemplates />
+            )}
+
+            {activeTab === 'extract' && (
+              <ExtractData />
             )}
 
             {activeTab === 'company' && (
@@ -400,58 +426,7 @@ export function Settings() {
             )}
 
             {activeTab === 'users' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">User Management</h3>
-                  <p className="text-sm text-gray-600">
-                    Total Users: <span className="font-semibold">{users.length}</span>
-                  </p>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-blue-800">
-                    To create new users, please use the Setup page or create them directly in Supabase Auth Dashboard.
-                    You can manage existing user status and roles from this page.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  {users.map((user) => (
-                    <div
-                      key={user.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                          <span className="text-blue-600 font-semibold">
-                            {user.full_name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{user.full_name}</p>
-                          <p className="text-sm text-gray-500">{user.email}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <span className="px-3 py-1 bg-white border border-gray-300 rounded-full text-xs font-medium capitalize">
-                          {user.role}
-                        </span>
-                        <button
-                          onClick={() => toggleUserStatus(user.id, user.is_active)}
-                          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
-                            user.is_active
-                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                              : 'bg-red-100 text-red-800 hover:bg-red-200'
-                          }`}
-                        >
-                          {user.is_active ? 'Active' : 'Inactive'}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <UserManagement users={users} onRefresh={loadUsers} />
             )}
 
             {activeTab === 'financial' && (

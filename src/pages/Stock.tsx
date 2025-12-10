@@ -13,6 +13,8 @@ interface StockSummary {
   unit: string;
   category: string;
   total_current_stock: number;
+  reserved_quantity: number;
+  available_quantity: number;
   active_batch_count: number;
   expired_batch_count: number;
   nearest_expiry_date: string | null;
@@ -22,6 +24,8 @@ interface DetailedBatch {
   id: string;
   batch_number: string;
   current_stock: number;
+  reserved_quantity: number;
+  available_quantity: number;
   expiry_date: string | null;
   import_date: string;
 }
@@ -40,14 +44,57 @@ export function Stock() {
 
   const loadStockSummary = async () => {
     try {
+      // Get all products (don't filter by stock yet)
       const { data, error } = await supabase
         .from('product_stock_summary')
         .select('*')
-        .gt('total_current_stock', 0)
         .order('product_name');
 
       if (error) throw error;
-      setStockSummary(data || []);
+
+      // Get products with active shortages (pending/ordered import requirements)
+      const { data: shortageData } = await supabase
+        .from('import_requirements')
+        .select('product_id, shortage_quantity')
+        .in('status', ['pending', 'ordered']);
+
+      // Build map of product_id -> total shortage quantity
+      const shortageMap = new Map<string, number>();
+      shortageData?.forEach(s => {
+        const current = shortageMap.get(s.product_id) || 0;
+        shortageMap.set(s.product_id, current + Number(s.shortage_quantity));
+      });
+
+      // Get reserved quantities for each product
+      const productsWithReserved = await Promise.all(
+        (data || []).map(async (product) => {
+          const { data: reservedData } = await supabase
+            .from('stock_reservations')
+            .select('reserved_quantity')
+            .eq('product_id', product.product_id)
+            .eq('is_released', false);
+
+          const reserved_quantity = reservedData?.reduce((sum, r) => sum + Number(r.reserved_quantity), 0) || 0;
+          const shortage_quantity = shortageMap.get(product.product_id) || 0;
+
+          // If there's shortage, show negative reserved (deficit)
+          const displayed_reserved = shortage_quantity > 0 ? -shortage_quantity : reserved_quantity;
+          const available_quantity = product.total_current_stock - reserved_quantity;
+
+          return {
+            ...product,
+            reserved_quantity: displayed_reserved,
+            available_quantity
+          };
+        })
+      );
+
+      // Filter: show products with stock > 0 OR reserved != 0 (including negative) OR has shortage
+      const filteredProducts = productsWithReserved.filter(
+        p => p.total_current_stock > 0 || p.reserved_quantity !== 0 || shortageMap.has(p.product_id)
+      );
+
+      setStockSummary(filteredProducts);
     } catch (error) {
       console.error('Error loading stock summary:', error);
     } finally {
@@ -59,14 +106,21 @@ export function Stock() {
     try {
       const { data, error } = await supabase
         .from('batches')
-        .select('id, batch_number, current_stock, expiry_date, import_date')
+        .select('id, batch_number, current_stock, reserved_stock, expiry_date, import_date')
         .eq('product_id', productId)
         .eq('is_active', true)
         .gt('current_stock', 0)
         .order('expiry_date', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
-      setProductBatches(data || []);
+
+      const batchesWithReserved = (data || []).map(batch => ({
+        ...batch,
+        reserved_quantity: batch.reserved_stock || 0,
+        available_quantity: batch.current_stock - (batch.reserved_stock || 0)
+      }));
+
+      setProductBatches(batchesWithReserved);
     } catch (error) {
       console.error('Error loading product batches:', error);
     }
@@ -112,10 +166,38 @@ export function Stock() {
     },
     {
       key: 'stock',
-      label: 'Stock',
+      label: 'Total Stock',
       render: (item: StockSummary) => (
         <span className={`font-semibold ${getStockStatusColor(item.total_current_stock, item.active_batch_count)}`}>
           {item.total_current_stock.toLocaleString()} {item.unit}
+        </span>
+      )
+    },
+    {
+      key: 'reserved',
+      label: 'Reserved',
+      render: (item: StockSummary) => {
+        if (item.reserved_quantity === 0) return <span className="text-gray-400">-</span>;
+        if (item.reserved_quantity < 0) {
+          return (
+            <span className="text-red-600 font-semibold">
+              {item.reserved_quantity.toLocaleString()} {item.unit}
+            </span>
+          );
+        }
+        return (
+          <span className="text-orange-600 font-medium">
+            {item.reserved_quantity.toLocaleString()} {item.unit}
+          </span>
+        );
+      }
+    },
+    {
+      key: 'available',
+      label: 'Available',
+      render: (item: StockSummary) => (
+        <span className="text-green-600 font-semibold">
+          {item.available_quantity.toLocaleString()} {item.unit}
         </span>
       )
     },
@@ -162,10 +244,28 @@ export function Stock() {
       )
     },
     {
-      key: 'stock',
-      label: 'Stock',
+      key: 'total_stock',
+      label: 'Total',
       render: (batch: DetailedBatch) => (
         <span className="font-semibold text-sm">{batch.current_stock.toLocaleString()} {selectedProduct?.unit}</span>
+      )
+    },
+    {
+      key: 'reserved',
+      label: 'Reserved',
+      render: (batch: DetailedBatch) => (
+        <span className="text-orange-600 font-medium text-sm">
+          {batch.reserved_quantity > 0 ? `${batch.reserved_quantity.toLocaleString()} ${selectedProduct?.unit}` : '-'}
+        </span>
+      )
+    },
+    {
+      key: 'available',
+      label: 'Available',
+      render: (batch: DetailedBatch) => (
+        <span className="text-green-600 font-semibold text-sm">
+          {batch.available_quantity.toLocaleString()} {selectedProduct?.unit}
+        </span>
       )
     },
     {

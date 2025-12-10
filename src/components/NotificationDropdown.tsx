@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bell, X, CheckCheck, AlertTriangle, Clock, Package, FileText } from 'lucide-react';
+import { Bell, X, CheckCheck, AlertTriangle, Clock, Package, FileText, CheckSquare, MessageSquare, AtSign } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -85,6 +85,16 @@ export function NotificationDropdown() {
         return <FileText className="w-5 h-5 text-blue-600" />;
       case 'follow_up':
         return <Bell className="w-5 h-5 text-purple-600" />;
+      case 'task_assigned':
+        return <CheckSquare className="w-5 h-5 text-blue-600" />;
+      case 'task_mention':
+        return <AtSign className="w-5 h-5 text-purple-600" />;
+      case 'task_comment':
+        return <MessageSquare className="w-5 h-5 text-green-600" />;
+      case 'task_status_change':
+        return <CheckSquare className="w-5 h-5 text-orange-600" />;
+      case 'task_deadline':
+        return <Clock className="w-5 h-5 text-red-600" />;
       default:
         return <Package className="w-5 h-5 text-gray-600" />;
     }

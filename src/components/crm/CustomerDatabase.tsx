@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Users, Upload, Search, Edit, Trash2, Building, Mail, Phone, Globe, MapPin, Activity } from 'lucide-react';
+import { Users, Upload, Search, Edit, Trash2, Building, Mail, Phone, Globe, MapPin, Activity, Send } from 'lucide-react';
 import { Modal } from '../Modal';
 import { CustomerInteractionTimeline } from './CustomerInteractionTimeline';
+import { BulkEmailComposer } from './BulkEmailComposer';
 
 interface Contact {
   id: string;
@@ -37,6 +38,7 @@ interface CustomerDatabaseProps {
 export function CustomerDatabase({ canManage }: CustomerDatabaseProps) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [modalOpen, setModalOpen] = useState(false);
@@ -45,6 +47,8 @@ export function CustomerDatabase({ canManage }: CustomerDatabaseProps) {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
+  const [bulkEmailModalOpen, setBulkEmailModalOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     company_name: '',
@@ -65,15 +69,22 @@ export function CustomerDatabase({ canManage }: CustomerDatabaseProps) {
 
   const loadContacts = async () => {
     try {
+      setError(null);
       const { data, error } = await supabase
         .from('crm_contacts')
         .select('*')
         .order('company_name', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw new Error(error.message || 'Failed to load contacts');
+      }
       setContacts(data || []);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load contacts. Please try again.';
       console.error('Error loading contacts:', error);
+      setError(errorMessage);
+      setContacts([]);
     } finally {
       setLoading(false);
     }
@@ -263,6 +274,49 @@ Bio Solutions Ltd,"789 Industrial Zone",Bandung,TRADER,022-5554321,David Chen,08
     return matchesSearch && matchesType;
   });
 
+  const handleSelectContact = (contactId: string) => {
+    const newSelected = new Set(selectedContacts);
+    if (newSelected.has(contactId)) {
+      newSelected.delete(contactId);
+    } else {
+      newSelected.add(contactId);
+    }
+    setSelectedContacts(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedContacts.size === filteredContacts.length) {
+      setSelectedContacts(new Set());
+    } else {
+      setSelectedContacts(new Set(filteredContacts.map(c => c.id)));
+    }
+  };
+
+  const handleBulkEmail = () => {
+    const contactsWithEmail = Array.from(selectedContacts)
+      .map(id => contacts.find(c => c.id === id))
+      .filter((c): c is Contact => !!c && !!c.email);
+
+    if (contactsWithEmail.length === 0) {
+      alert('Please select customers with email addresses');
+      return;
+    }
+
+    setBulkEmailModalOpen(true);
+  };
+
+  const getSelectedCustomersForEmail = () => {
+    return Array.from(selectedContacts)
+      .map(id => contacts.find(c => c.id === id))
+      .filter((c): c is Contact => !!c && !!c.email)
+      .map(c => ({
+        id: c.id,
+        company_name: c.company_name,
+        email: c.email,
+        contact_person: c.contact_person,
+      }));
+  };
+
   const customerTypeConfig = {
     prospect: { label: 'Prospect', color: 'bg-gray-100 text-gray-800' },
     active: { label: 'Active', color: 'bg-green-100 text-green-800' },
@@ -277,9 +331,23 @@ Bio Solutions Ltd,"789 Industrial Zone",Bandung,TRADER,022-5554321,David Chen,08
           <Users className="w-5 h-5 text-blue-600" />
           <h3 className="text-lg font-semibold">Customer Database</h3>
           <span className="text-sm text-gray-500">({contacts.length} contacts)</span>
+          {selectedContacts.size > 0 && (
+            <span className="text-sm font-medium text-blue-600">
+              ({selectedContacts.size} selected)
+            </span>
+          )}
         </div>
         {canManage && (
           <div className="flex gap-2">
+            {selectedContacts.size > 0 && (
+              <button
+                onClick={handleBulkEmail}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+              >
+                <Send className="w-4 h-4" />
+                Send Bulk Email ({selectedContacts.size})
+              </button>
+            )}
             <button
               onClick={() => setImportModalOpen(true)}
               className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition"
@@ -325,6 +393,28 @@ Bio Solutions Ltd,"789 Industrial Zone",Bandung,TRADER,022-5554321,David Chen,08
         </select>
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <div className="text-red-600 mt-0.5">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-900">Error Loading Contacts</p>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+              <button
+                onClick={loadContacts}
+                className="mt-3 text-sm font-medium text-red-700 hover:text-red-800 underline"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
@@ -335,6 +425,16 @@ Bio Solutions Ltd,"789 Industrial Zone",Bandung,TRADER,022-5554321,David Chen,08
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
+                  {canManage && (
+                    <th className="px-4 py-3 text-center font-semibold text-gray-700 w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectedContacts.size === filteredContacts.length && filteredContacts.length > 0}
+                        onChange={handleSelectAll}
+                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                      />
+                    </th>
+                  )}
                   <th className="px-4 py-3 text-left font-semibold text-gray-700">Company</th>
                   <th className="px-4 py-3 text-left font-semibold text-gray-700">City</th>
                   <th className="px-4 py-3 text-left font-semibold text-gray-700">Category</th>
@@ -348,13 +448,23 @@ Bio Solutions Ltd,"789 Industrial Zone",Bandung,TRADER,022-5554321,David Chen,08
               <tbody className="divide-y divide-gray-200">
                 {filteredContacts.length === 0 ? (
                   <tr>
-                    <td colSpan={canManage ? 8 : 7} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={canManage ? 9 : 7} className="px-4 py-8 text-center text-gray-500">
                       No contacts found
                     </td>
                   </tr>
                 ) : (
                   filteredContacts.map((contact) => (
                     <tr key={contact.id} className="hover:bg-gray-50 transition">
+                      {canManage && (
+                        <td className="px-4 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedContacts.has(contact.id)}
+                            onChange={() => handleSelectContact(contact.id)}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <button
                           onClick={() => {
@@ -759,6 +869,28 @@ Bio Solutions Ltd,"789 Industrial Zone",Bandung,TRADER,022-5554321,David Chen,08
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={bulkEmailModalOpen}
+        onClose={() => {
+          setBulkEmailModalOpen(false);
+          setSelectedContacts(new Set());
+        }}
+        title="Bulk Email"
+      >
+        <BulkEmailComposer
+          selectedCustomers={getSelectedCustomersForEmail()}
+          onClose={() => {
+            setBulkEmailModalOpen(false);
+            setSelectedContacts(new Set());
+          }}
+          onComplete={() => {
+            setBulkEmailModalOpen(false);
+            setSelectedContacts(new Set());
+            loadContacts();
+          }}
+        />
       </Modal>
     </div>
   );
