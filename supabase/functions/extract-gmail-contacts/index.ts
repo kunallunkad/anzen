@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -140,6 +141,40 @@ function parseSignature(text: string): { name?: string; company?: string; phone?
   }
 
   return { name, company, phone, mobile, website, address };
+}
+
+async function refreshAccessToken(refreshToken: string, clientId: string, clientSecret: string): Promise<{ accessToken: string; expiresIn: number } | null> {
+  try {
+    console.log('Refreshing access token...');
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Token refresh failed:', response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log('Token refreshed successfully');
+    return {
+      accessToken: data.access_token,
+      expiresIn: data.expires_in || 3600,
+    };
+  } catch (error) {
+    console.error('Error refreshing token:', error);
+    return null;
+  }
 }
 
 async function fetchGmailMessages(accessToken: string, maxResults = 500): Promise<any[]> {
@@ -330,7 +365,7 @@ Deno.serve(async (req: Request) => {
   try {
     console.log('Extract Gmail Contacts function called');
     
-    const { access_token, max_emails = 500 } = await req.json();
+    const { access_token, max_emails = 500, user_id, connection_id } = await req.json();
 
     if (!access_token) {
       console.error('No access token provided');
@@ -346,38 +381,122 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    let currentAccessToken = access_token;
+
     console.log(`Fetching up to ${max_emails} emails...`);
-    const messages = await fetchGmailMessages(access_token, max_emails);
-    console.log(`Fetched ${messages.length} messages`);
     
-    const contactsMap = extractContacts(messages);
-    console.log(`Extracted ${contactsMap.size} contacts`);
+    try {
+      const messages = await fetchGmailMessages(currentAccessToken, max_emails);
+      console.log(`Fetched ${messages.length} messages`);
+      
+      const contactsMap = extractContacts(messages);
+      console.log(`Extracted ${contactsMap.size} contacts`);
 
-    const contacts = Array.from(contactsMap.values()).map(contact => ({
-      ...contact,
-      emailIds: contact.emailIds.join('; '),
-    }));
+      const contacts = Array.from(contactsMap.values()).map(contact => ({
+        ...contact,
+        emailIds: contact.emailIds.join('; '),
+      }));
 
-    const filteredContacts = contacts.filter(c =>
-      c.companyName || c.customerName || c.emailIds.length > 0
-    );
+      const filteredContacts = contacts.filter(c =>
+        c.companyName || c.customerName || c.emailIds.length > 0
+      );
 
-    console.log(`Returning ${filteredContacts.length} filtered contacts`);
+      console.log(`Returning ${filteredContacts.length} filtered contacts`);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        total_emails: messages.length,
-        total_contacts: filteredContacts.length,
-        contacts: filteredContacts,
-      }),
-      {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
+      return new Response(
+        JSON.stringify({
+          success: true,
+          total_emails: messages.length,
+          total_contacts: filteredContacts.length,
+          contacts: filteredContacts,
+        }),
+        {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    } catch (gmailError: any) {
+      if (gmailError.message.includes('401') && user_id && connection_id) {
+        console.log('Access token expired, attempting to refresh...');
+        
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+        const { data: connection } = await supabase
+          .from('gmail_connections')
+          .select('refresh_token')
+          .eq('id', connection_id)
+          .eq('user_id', user_id)
+          .maybeSingle();
+
+        if (connection && connection.refresh_token) {
+          const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
+          const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET');
+
+          if (!clientId || !clientSecret) {
+            throw new Error('Google OAuth credentials not configured');
+          }
+
+          const refreshResult = await refreshAccessToken(
+            connection.refresh_token,
+            clientId,
+            clientSecret
+          );
+
+          if (refreshResult) {
+            const expiresAt = new Date(Date.now() + refreshResult.expiresIn * 1000).toISOString();
+            
+            await supabase
+              .from('gmail_connections')
+              .update({
+                access_token: refreshResult.accessToken,
+                access_token_expires_at: expiresAt,
+              })
+              .eq('id', connection_id);
+
+            console.log('Token refreshed, retrying Gmail API...');
+            const messages = await fetchGmailMessages(refreshResult.accessToken, max_emails);
+            console.log(`Fetched ${messages.length} messages after token refresh`);
+            
+            const contactsMap = extractContacts(messages);
+            console.log(`Extracted ${contactsMap.size} contacts`);
+
+            const contacts = Array.from(contactsMap.values()).map(contact => ({
+              ...contact,
+              emailIds: contact.emailIds.join('; '),
+            }));
+
+            const filteredContacts = contacts.filter(c =>
+              c.companyName || c.customerName || c.emailIds.length > 0
+            );
+
+            console.log(`Returning ${filteredContacts.length} filtered contacts`);
+
+            return new Response(
+              JSON.stringify({
+                success: true,
+                total_emails: messages.length,
+                total_contacts: filteredContacts.length,
+                contacts: filteredContacts,
+              }),
+              {
+                headers: {
+                  ...corsHeaders,
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+          }
+        }
+        
+        throw new Error('Access token expired. Please reconnect Gmail in Settings.');
       }
-    );
+      
+      throw gmailError;
+    }
   } catch (error: any) {
     console.error('Error in extract-gmail-contacts:', error);
     return new Response(

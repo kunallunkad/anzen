@@ -63,6 +63,8 @@ export function ExtractData() {
         body: JSON.stringify({
           access_token: connection.access_token,
           max_emails: maxEmails,
+          user_id: user.id,
+          connection_id: connection.id,
         }),
       });
 
