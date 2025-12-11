@@ -292,7 +292,6 @@ function extractContacts(messages: any[]): Map<string, ExtractedContact> {
         if (isInternalEmail(addr.email)) {
           continue;
         }
-
         if (addr.email.includes('noreply') || addr.email.includes('no-reply')) {
           continue;
         }
@@ -433,11 +432,11 @@ Deno.serve(async (req: Request) => {
           .maybeSingle();
 
         if (connection && connection.refresh_token) {
-          const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
-          const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET');
+          const clientId = Deno.env.get('GMAIL_CLIENT_ID');
+          const clientSecret = Deno.env.get('GMAIL_CLIENT_SECRET');
 
           if (!clientId || !clientSecret) {
-            throw new Error('Google OAuth credentials not configured');
+            throw new Error('Gmail OAuth credentials not configured');
           }
 
           const refreshResult = await refreshAccessToken(
