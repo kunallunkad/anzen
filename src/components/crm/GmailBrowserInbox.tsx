@@ -104,14 +104,20 @@ export function GmailBrowserInbox() {
 
   const loadGmailConnection = async () => {
     try {
+      console.log('[GmailBrowserInbox] === LOADING GMAIL CONNECTION ===');
       const { data: { user }, error: authError } = await supabase.auth.getUser();
 
+      console.log('[GmailBrowserInbox] Auth user:', user?.id);
+      console.log('[GmailBrowserInbox] Auth error:', authError);
+
       if (authError || !user) {
-        console.error('Auth error:', authError);
+        console.error('[GmailBrowserInbox] Auth error:', authError);
         setError('Not authenticated');
         setLoading(false);
         return;
       }
+
+      console.log('[GmailBrowserInbox] Querying gmail_connections for user:', user.id);
 
       const { data, error } = await supabase
         .from('gmail_connections')
@@ -122,21 +128,26 @@ export function GmailBrowserInbox() {
         .limit(1)
         .maybeSingle();
 
+      console.log('[GmailBrowserInbox] Query result - data:', data);
+      console.log('[GmailBrowserInbox] Query result - error:', error);
+
       if (error && error.code !== 'PGRST116') {
-        console.error('Database error loading connection:', error);
+        console.error('[GmailBrowserInbox] Database error loading connection:', error);
         throw error;
       }
 
       if (!data) {
+        console.error('[GmailBrowserInbox] NO CONNECTION FOUND for user:', user.id);
         setError('No Gmail account connected. Please connect your Gmail account in Settings.');
         setLoading(false);
         return;
       }
 
+      console.log('[GmailBrowserInbox] Connection loaded successfully:', data.email_address);
       setConnection(data);
       setError(null);
     } catch (err) {
-      console.error('Error loading Gmail connection:', err);
+      console.error('[GmailBrowserInbox] Error loading Gmail connection:', err);
       setError('Failed to load Gmail connection');
     } finally {
       setLoading(false);
