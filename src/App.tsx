@@ -20,9 +20,6 @@ import { Setup } from './pages/Setup';
 import { GmailCallback } from './pages/GmailCallback';
 import SalesOrders from './pages/SalesOrders';
 import ImportRequirements from './pages/ImportRequirements';
-import MaterialReturns from './pages/MaterialReturns';
-import StockRejections from './pages/StockRejections';
-import Approvals from './pages/Approvals';
 import { ApprovalNotifications } from './components/ApprovalNotifications';
 import { initializeNotificationChecks } from './utils/notifications';
 
@@ -89,12 +86,6 @@ function AppContent() {
         return <Sales />;
       case 'finance':
         return <Finance />;
-      case 'material-returns':
-        return <MaterialReturns />;
-      case 'stock-rejections':
-        return <StockRejections />;
-      case 'approvals':
-        return <Approvals />;
       case 'settings':
         return <Settings />;
       default:
