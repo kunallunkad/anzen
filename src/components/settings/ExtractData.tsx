@@ -80,10 +80,14 @@ export function ExtractData() {
       if (result.success) {
         setContacts(result.contacts);
         setStats({
-          total_emails: result.total_emails,
+          total_emails: result.total_emails_scanned || result.total_emails,
           total_contacts: result.total_contacts,
         });
         setSelectedContacts(new Set(result.contacts.map((_: any, i: number) => i)));
+
+        if (result.message) {
+          alert(`Success! ${result.message}`);
+        }
       } else {
         throw new Error(result.error || 'Failed to extract contacts');
       }
@@ -208,8 +212,19 @@ export function ExtractData() {
       <div>
         <h2 className="text-lg font-semibold text-gray-900 mb-2">Extract Data from Gmail</h2>
         <p className="text-sm text-gray-600">
-          Extract contact information from your Gmail inbox, sent emails, and CC/BCC recipients. The system will analyze email signatures, bodies, and headers to gather business contact details.
+          AI-powered extraction of contact information from Gmail. The system uses OpenAI to intelligently extract company names, contacts, phone numbers, and websites. It automatically enriches company data and tracks processed emails to avoid duplicates.
         </p>
+        <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <p className="text-xs text-blue-900 font-medium">
+            Smart Features:
+          </p>
+          <ul className="text-xs text-blue-700 mt-1 space-y-1 ml-4 list-disc">
+            <li>AI extracts REAL company names (e.g., "PT Genero Pharmaceuticals" from @genero.co.id)</li>
+            <li>Filters out email greetings and body text that are NOT companies</li>
+            <li>Tracks processed emails - click again to get NEXT batch of NEW emails</li>
+            <li>Web enrichment to verify company websites</li>
+          </ul>
+        </div>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
@@ -257,10 +272,13 @@ export function ExtractData() {
               <CheckCircle className="h-5 w-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-sm text-blue-900 font-medium">
-                  Extraction completed successfully!
+                  AI Extraction completed successfully!
                 </p>
                 <p className="text-xs text-blue-700 mt-1">
-                  Scanned {stats.total_emails} emails and found {stats.total_contacts} unique contacts
+                  Scanned {stats.total_emails} NEW unprocessed emails and found {stats.total_contacts} unique high-quality contacts
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Click "Extract Contacts" again to process the next batch of NEW emails
                 </p>
               </div>
             </div>
