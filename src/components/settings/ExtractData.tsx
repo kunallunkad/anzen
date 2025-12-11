@@ -41,7 +41,7 @@ export function ExtractData() {
 
       if (connectionError && connectionError.code !== 'PGRST116') {
         console.error('Error fetching Gmail connection:', connectionError);
-        alert('Error checking Gmail connection. Please try again.');
+        alert(`Database error: ${connectionError.message}. Please contact support.`);
         return;
       }
 
@@ -51,6 +51,8 @@ export function ExtractData() {
       }
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-gmail-contacts`;
+
+      console.log('Calling edge function:', apiUrl);
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -64,11 +66,14 @@ export function ExtractData() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to extract contacts');
-      }
+      console.log('Response status:', response.status);
 
       const result = await response.json();
+      console.log('Response data:', result);
+
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
 
       if (result.success) {
         setContacts(result.contacts);
@@ -80,9 +85,10 @@ export function ExtractData() {
       } else {
         throw new Error(result.error || 'Failed to extract contacts');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error extracting contacts:', error);
-      alert('Failed to extract contacts. Please try again.');
+      const errorMessage = error.message || 'Unknown error occurred';
+      alert(`Failed to extract contacts: ${errorMessage}\n\nPlease check:\n1. Gmail is connected in Settings → Gmail tab\n2. Your Gmail connection hasn't expired\n3. Try reconnecting Gmail if issues persist`);
     } finally {
       setExtracting(false);
     }

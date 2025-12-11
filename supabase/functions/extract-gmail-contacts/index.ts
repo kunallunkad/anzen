@@ -157,7 +157,9 @@ async function fetchGmailMessages(accessToken: string, maxResults = 500): Promis
       });
 
       if (!listResponse.ok) {
-        throw new Error(`Gmail API error: ${listResponse.statusText}`);
+        const errorText = await listResponse.text();
+        console.error('Gmail API error:', listResponse.status, errorText);
+        throw new Error(`Gmail API error: ${listResponse.status} - ${listResponse.statusText}`);
       }
 
       const listData = await listResponse.json();
@@ -193,6 +195,7 @@ async function fetchGmailMessages(accessToken: string, maxResults = 500): Promis
     }
   } catch (error) {
     console.error('Error fetching Gmail messages:', error);
+    throw error;
   }
 
   return messages;
@@ -325,11 +328,14 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    console.log('Extract Gmail Contacts function called');
+    
     const { access_token, max_emails = 500 } = await req.json();
 
     if (!access_token) {
+      console.error('No access token provided');
       return new Response(
-        JSON.stringify({ error: 'Access token is required' }),
+        JSON.stringify({ error: 'Access token is required', success: false }),
         {
           status: 400,
           headers: {
@@ -340,8 +346,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    console.log(`Fetching up to ${max_emails} emails...`);
     const messages = await fetchGmailMessages(access_token, max_emails);
+    console.log(`Fetched ${messages.length} messages`);
+    
     const contactsMap = extractContacts(messages);
+    console.log(`Extracted ${contactsMap.size} contacts`);
 
     const contacts = Array.from(contactsMap.values()).map(contact => ({
       ...contact,
@@ -351,6 +361,8 @@ Deno.serve(async (req: Request) => {
     const filteredContacts = contacts.filter(c =>
       c.companyName || c.customerName || c.emailIds.length > 0
     );
+
+    console.log(`Returning ${filteredContacts.length} filtered contacts`);
 
     return new Response(
       JSON.stringify({
@@ -366,8 +378,8 @@ Deno.serve(async (req: Request) => {
         },
       }
     );
-  } catch (error) {
-    console.error('Error:', error);
+  } catch (error: any) {
+    console.error('Error in extract-gmail-contacts:', error);
     return new Response(
       JSON.stringify({
         error: error.message || 'An error occurred',
