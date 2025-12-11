@@ -31,127 +31,113 @@ function isInternalEmail(email: string): boolean {
   return INTERNAL_DOMAINS.some(internalDomain => domain === internalDomain);
 }
 
-function extractPhoneNumber(text: string): string[] {
-  const phoneRegex = /(\+?\d{1,4}[-\.\s]?)?(\(?\d{2,4}\)?[-\.\s]?)?\d{3,4}[-\.\s]?\d{3,4}/g;
-  const matches = text.match(phoneRegex) || [];
-  return matches.map(phone => phone.trim()).slice(0, 2);
-}
-
-function extractWebsite(text: string): string[] {
-  const urlRegex = /(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/g;
-  const matches = text.match(urlRegex) || [];
-  return matches.filter(url => !url.includes('@')).slice(0, 1);
-}
-
-function enrichCompanyFromDomain(domain: string): { companyName: string; website: string } {
-  if (domain.includes('gmail') || domain.includes('yahoo') || domain.includes('hotmail') || domain.includes('outlook')) {
-    return { companyName: '', website: '' };
-  }
-
-  const baseDomain = domain.split('.').slice(0, -1).join('.');
-  let companyName = baseDomain
-    .replace(/[-_]/g, ' ')
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-
-  if (domain.endsWith('.co.id') && !companyName.toLowerCase().startsWith('pt')) {
-    companyName = 'PT ' + companyName;
-  } else if (domain.endsWith('.co.in')) {
-    companyName = companyName + ' Pvt Ltd';
-  }
-
-  return { companyName, website: `www.${domain}` };
-}
-
-function extractFromSignature(emailBody: string): { name?: string; company?: string; phone?: string } {
-  const lines = emailBody.split('\n').map(l => l.trim()).filter(l => l && l.length < 100);
-
-  let name = '';
-  let company = '';
-  let phone = '';
-
-  const invalidPatterns = /^(dear|hi|hello|regards|thanks|best|sincerely|thank you|mohon maaf|selamat|from:|to:|subject:)/i;
-
-  for (let i = 0; i < Math.min(lines.length, 10); i++) {
-    const line = lines[i];
-
-    if (invalidPatterns.test(line)) continue;
-
-    if (!name && i < 3 && line.length > 2 && line.length < 50) {
-      name = line;
-    }
-
-    if (!company && i > 0 && i < 5 && line.length > 2) {
-      const hasContactInfo = /phone|email|www|@/.test(line.toLowerCase());
-      if (!hasContactInfo) {
-        company = line;
-      }
-    }
-
-    const phones = extractPhoneNumber(line);
-    if (phones.length > 0 && !phone) {
-      phone = phones[0];
-    }
-  }
-
-  return { name, company, phone };
-}
-
-function quickExtractContact(
-  fromEmail: string,
-  fromName: string | undefined,
-  emailBody: string
-): ExtractedContact {
-  const domain = fromEmail.split('@')[1];
-  const { companyName, website } = enrichCompanyFromDomain(domain);
-  const signature = extractFromSignature(emailBody);
-  const phones = extractPhoneNumber(emailBody);
-  const websites = extractWebsite(emailBody);
-
-  const finalCompany = signature.company || companyName || '';
-  const finalName = signature.name || fromName || fromEmail.split('@')[0];
-  const finalWebsite = websites[0] || website || '';
-
-  return {
-    companyName: finalCompany,
-    customerName: finalName,
-    emailIds: [fromEmail],
-    phone: signature.phone || phones[0] || '',
-    mobile: phones[1] || '',
-    website: finalWebsite,
-    address: '',
-    source: 'Gmail',
-    confidence: finalCompany && finalCompany.length > 2 ? 0.7 : 0.4
-  };
-}
-
-async function refreshAccessToken(refreshToken: string, clientId: string, clientSecret: string): Promise<{ accessToken: string; expiresIn: number } | null> {
+async function extractContactWithAI(
+  email: string,
+  name: string | undefined,
+  subject: string,
+  body: string,
+  openaiApiKey: string
+): Promise<ExtractedContact | null> {
   try {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
+    const prompt = `Extract company and contact information from this email. Return ONLY valid JSON, no markdown.
+
+Email: ${email}
+Name: ${name || 'N/A'}
+Subject: ${subject}
+Body: ${body.substring(0, 2000)}
+
+Rules:
+1. For company name:
+   - Extract REAL company name from signature or email domain
+   - For .co.id domains, add "PT " prefix if missing (e.g., "PT Genero Pharmaceuticals")
+   - For .co.in domains, add " Pvt Ltd" suffix if appropriate
+   - NEVER use email body content (like "Dear Sir", "Thank you", "We confirm", etc.)
+   - NEVER use generic domains (gmail, yahoo, hotmail, outlook)
+   - If no valid company found, return empty string
+
+2. For contact name:
+   - Use the name from email signature
+   - If not in signature, use the "From" name
+   - NEVER use email body content
+
+3. Extract phone numbers, websites from signature only
+4. Set confidence 0.8-1.0 for clear company names, 0.5-0.7 for domain-derived names, 0.0-0.4 for unclear
+
+Return JSON:
+{
+  "companyName": "PT Company Name" or "",
+  "customerName": "Person Name",
+  "phone": "phone number",
+  "mobile": "mobile number",
+  "website": "company website",
+  "address": "company address",
+  "confidence": 0.0 to 1.0
+}`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey}`,
       },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token',
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a data extraction assistant. Extract company information accurately. Return ONLY valid JSON, no markdown formatting.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 300,
       }),
     });
 
     if (!response.ok) {
+      console.error('OpenAI API error:', response.status);
       return null;
     }
 
     const data = await response.json();
+    let content = data.choices[0]?.message?.content?.trim() || '';
+
+    content = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+
+    const extracted = JSON.parse(content);
+
+    const isValidCompanyName = (name: string): boolean => {
+      if (!name || name.length < 3) return false;
+      const invalidPatterns = [
+        /^(dear|hi|hello|regards|thanks|best|sincerely|thank you)/i,
+        /^(we|i|our|your|the|this|that|it|please|sorry|actually)/i,
+        /meeting|invitation|confirm|jump|delivery subsystem/i,
+        /^googlemail$|^yahoomail$|^hotmail$|^outlook$/i,
+      ];
+      return !invalidPatterns.some(pattern => pattern.test(name));
+    };
+
+    if (!isValidCompanyName(extracted.companyName)) {
+      extracted.companyName = '';
+      extracted.confidence = Math.min(extracted.confidence || 0, 0.3);
+    }
+
     return {
-      accessToken: data.access_token,
-      expiresIn: data.expires_in || 3600,
+      companyName: extracted.companyName || '',
+      customerName: extracted.customerName || name || email.split('@')[0],
+      emailIds: [email],
+      phone: extracted.phone || '',
+      mobile: extracted.mobile || '',
+      website: extracted.website || '',
+      address: extracted.address || '',
+      source: 'Gmail',
+      confidence: extracted.confidence || 0.5,
     };
   } catch (error) {
-    console.error('Error refreshing token:', error);
+    console.error('Error extracting with AI:', error);
     return null;
   }
 }
@@ -277,8 +263,9 @@ function getEmailBody(message: any): string {
   return body.substring(0, 5000);
 }
 
-async function extractContacts(
+async function extractContactsWithAI(
   messages: any[],
+  openaiApiKey: string,
   supabase: any,
   connectionId: string,
   userId: string
@@ -286,17 +273,21 @@ async function extractContacts(
   const contactsMap = new Map<string, ExtractedContact>();
   const processedMessageIds: string[] = [];
 
+  console.log(`Starting AI extraction for ${messages.length} messages...`);
+  let processed = 0;
+
   for (const message of messages) {
     try {
       const headers = message.payload.headers;
       const addresses = extractEmailAddresses(headers);
+      const fromAddresses = addresses.filter(addr => addr.field === 'from');
 
-      if (addresses.length === 0) {
+      if (fromAddresses.length === 0) {
         processedMessageIds.push(message.id);
         continue;
       }
 
-      const fromAddr = addresses[0];
+      const fromAddr = fromAddresses[0];
 
       if (isInternalEmail(fromAddr.email)) {
         processedMessageIds.push(message.id);
@@ -308,10 +299,19 @@ async function extractContacts(
         continue;
       }
 
+      const subjectHeader = headers.find((h: any) => h.name.toLowerCase() === 'subject');
+      const subject = subjectHeader?.value || '';
       const body = getEmailBody(message);
-      const contact = quickExtractContact(fromAddr.email, fromAddr.name, body);
 
-      if (contact.confidence >= 0.5) {
+      const extractedContact = await extractContactWithAI(
+        fromAddr.email,
+        fromAddr.name,
+        subject,
+        body,
+        openaiApiKey
+      );
+
+      if (extractedContact && extractedContact.confidence >= 0.5) {
         const domain = fromAddr.email.split('@')[1];
         const isGenericEmail = domain && (domain.includes('gmail') || domain.includes('yahoo') || domain.includes('hotmail') || domain.includes('outlook'));
         const companyKey = isGenericEmail ? fromAddr.email : domain;
@@ -321,13 +321,28 @@ async function extractContacts(
           if (!existing.emailIds.includes(fromAddr.email)) {
             existing.emailIds.push(fromAddr.email);
           }
-          existing.confidence = Math.max(existing.confidence, contact.confidence);
+          existing.confidence = Math.max(existing.confidence, extractedContact.confidence);
         } else {
-          contactsMap.set(companyKey, contact);
+          contactsMap.set(companyKey, extractedContact);
         }
+
+        await supabase
+          .from('gmail_processed_messages')
+          .insert({
+            user_id: userId,
+            connection_id: connectionId,
+            gmail_message_id: message.id,
+            contacts_extracted: 1,
+            extraction_data: extractedContact
+          });
+      } else {
+        processedMessageIds.push(message.id);
       }
 
-      processedMessageIds.push(message.id);
+      processed++;
+      if (processed % 50 === 0) {
+        console.log(`Processed ${processed}/${messages.length} messages, found ${contactsMap.size} contacts so far...`);
+      }
     } catch (error) {
       console.error('Error processing message:', error);
       processedMessageIds.push(message.id);
@@ -343,7 +358,7 @@ async function extractContacts(
             user_id: userId,
             connection_id: connectionId,
             gmail_message_id: msgId,
-            contacts_extracted: contactsMap.size > 0 ? 1 : 0,
+            contacts_extracted: 0,
             extraction_data: null
           }))
         );
@@ -352,6 +367,7 @@ async function extractContacts(
     }
   }
 
+  console.log(`AI extraction complete. Found ${contactsMap.size} unique contacts from ${messages.length} messages`);
   return contactsMap;
 }
 
@@ -366,7 +382,7 @@ Deno.serve(async (req: Request) => {
   try {
     console.log('Extract Gmail Contacts function called');
 
-    const { access_token, max_emails = 50, user_id, connection_id } = await req.json();
+    const { access_token, max_emails = 100, user_id, connection_id } = await req.json();
 
     if (!access_token || !user_id || !connection_id) {
       return new Response(
@@ -381,24 +397,57 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiApiKey) {
+      return new Response(
+        JSON.stringify({ error: 'OpenAI API key is not configured', success: false }),
+        {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log(`Processing up to ${max_emails} emails...`);
+    console.log(`Processing up to ${max_emails} emails with AI extraction...`);
 
     const messages = await fetchGmailMessages(
       access_token,
-      Math.min(max_emails, 100),
+      Math.min(max_emails, 500),
       supabase,
       connection_id,
       user_id
     );
 
-    console.log(`Extracting contacts from ${messages.length} messages...`);
+    if (messages.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          total_emails_scanned: 0,
+          total_contacts: 0,
+          contacts: [],
+          message: 'All emails have been processed already. No new emails to scan.'
+        }),
+        {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
 
-    const contactsMap = await extractContacts(
+    console.log(`Extracting contacts from ${messages.length} messages using AI...`);
+
+    const contactsMap = await extractContactsWithAI(
       messages,
+      openaiApiKey,
       supabase,
       connection_id,
       user_id
@@ -413,7 +462,7 @@ Deno.serve(async (req: Request) => {
       c.companyName && c.companyName.length > 2 && c.confidence >= 0.5
     );
 
-    console.log(`Returning ${filteredContacts.length} contacts`);
+    console.log(`Returning ${filteredContacts.length} high-quality contacts`);
 
     return new Response(
       JSON.stringify({
@@ -421,7 +470,7 @@ Deno.serve(async (req: Request) => {
         total_emails_scanned: messages.length,
         total_contacts: filteredContacts.length,
         contacts: filteredContacts,
-        message: `Scanned ${messages.length} NEW emails and found ${filteredContacts.length} unique contacts`
+        message: `AI processed ${messages.length} NEW emails and extracted ${filteredContacts.length} high-quality contacts`
       }),
       {
         headers: {

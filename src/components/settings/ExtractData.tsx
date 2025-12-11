@@ -20,7 +20,7 @@ export function ExtractData() {
   const [contacts, setContacts] = useState<ExtractedContact[]>([]);
   const [stats, setStats] = useState<{ total_emails: number; total_contacts: number } | null>(null);
   const [selectedContacts, setSelectedContacts] = useState<Set<number>>(new Set());
-  const [maxEmails, setMaxEmails] = useState(50);
+  const [maxEmails, setMaxEmails] = useState(100);
 
   const extractContactsFromGmail = async () => {
     setExtracting(true);
@@ -212,17 +212,17 @@ export function ExtractData() {
       <div>
         <h2 className="text-lg font-semibold text-gray-900 mb-2">Extract Data from Gmail</h2>
         <p className="text-sm text-gray-600">
-          Smart extraction of contact information from Gmail. The system intelligently extracts company names, contacts, phone numbers, and websites from email signatures and headers. It automatically enriches company data and tracks processed emails to avoid duplicates.
+          AI-powered extraction of contact information from Gmail using OpenAI. The system intelligently extracts company names, contacts, phone numbers, and websites from email signatures. It filters out email body content and enriches company data automatically.
         </p>
         <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
           <p className="text-xs text-blue-900 font-medium">
-            Smart Features:
+            AI-Powered Features:
           </p>
           <ul className="text-xs text-blue-700 mt-1 space-y-1 ml-4 list-disc">
-            <li>Extracts REAL company names (e.g., "PT Genero Pharmaceuticals" from @genero.co.id)</li>
-            <li>Filters out email greetings and body text that are NOT companies</li>
+            <li>AI extracts REAL company names from signatures (e.g., "PT Genero Pharmaceuticals")</li>
+            <li>Filters out email greetings, body text, and system emails</li>
             <li>Tracks processed emails - click again to get NEXT batch of NEW emails</li>
-            <li>Fast processing - 50-100 emails in seconds</li>
+            <li>High-quality extraction - processes 100-500 emails (takes time for AI quality)</li>
           </ul>
         </div>
       </div>
@@ -236,13 +236,13 @@ export function ExtractData() {
             <input
               type="number"
               value={maxEmails}
-              onChange={(e) => setMaxEmails(Math.max(25, Math.min(100, parseInt(e.target.value) || 50)))}
-              min="25"
-              max="100"
-              step="25"
+              onChange={(e) => setMaxEmails(Math.max(50, Math.min(500, parseInt(e.target.value) || 100)))}
+              min="50"
+              max="500"
+              step="50"
               className="w-48 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
-            <p className="text-xs text-gray-500 mt-1">Range: 25 - 100 emails (recommended: 50)</p>
+            <p className="text-xs text-gray-500 mt-1">Range: 50 - 500 emails. Recommended: 100-200 for quality</p>
           </div>
 
           <div className="flex-shrink-0 pt-6">
@@ -272,10 +272,10 @@ export function ExtractData() {
               <CheckCircle className="h-5 w-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-sm text-blue-900 font-medium">
-                  Extraction completed successfully!
+                  AI Extraction completed successfully!
                 </p>
                 <p className="text-xs text-blue-700 mt-1">
-                  Scanned {stats.total_emails} NEW unprocessed emails and found {stats.total_contacts} unique high-quality contacts
+                  AI processed {stats.total_emails} NEW unprocessed emails and extracted {stats.total_contacts} high-quality contacts
                 </p>
                 <p className="text-xs text-blue-600 mt-1">
                   Click "Extract Contacts" again to process the next batch of NEW emails
