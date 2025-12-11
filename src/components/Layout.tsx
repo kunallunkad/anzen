@@ -23,6 +23,9 @@ import {
   FileText,
   ClipboardCheck,
   TrendingUp,
+  RotateCcw,
+  AlertTriangle,
+  ClipboardList,
 } from 'lucide-react';
 import logo from '../assets/Untitled-1.svg';
 
@@ -57,6 +60,9 @@ export function Layout({ children }: LayoutProps) {
     { id: 'delivery-challan', label: t('nav.deliveryChallan'), icon: Truck, roles: ['admin', 'accounts', 'sales', 'warehouse'] },
     { id: 'sales', label: t('nav.sales'), icon: ShoppingCart, roles: ['admin', 'accounts', 'sales'] },
     { id: 'import-requirements', label: 'Import Requirements', icon: TrendingUp, roles: ['admin', 'warehouse', 'sales'] },
+    { id: 'material-returns', label: t('nav.materialReturns') || 'Material Returns', icon: RotateCcw, roles: ['admin', 'warehouse', 'sales', 'manager'] },
+    { id: 'stock-rejections', label: t('nav.stockRejections') || 'Stock Rejections', icon: AlertTriangle, roles: ['admin', 'warehouse', 'manager'] },
+    { id: 'approvals', label: t('nav.approvals') || 'Approvals', icon: ClipboardList, roles: ['admin', 'manager'] },
     { id: 'finance', label: t('nav.finance'), icon: DollarSign, roles: ['admin', 'accounts'] },
     { id: 'crm', label: t('nav.crm'), icon: UserCircle, roles: ['admin', 'sales'] },
     { id: 'command-center', label: 'Command Center', icon: Zap, roles: ['admin', 'sales'] },
