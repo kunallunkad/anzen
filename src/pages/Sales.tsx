@@ -7,7 +7,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '../contexts/NavigationContext';
 import { supabase } from '../lib/supabase';
-import { Plus, Edit, Trash2, FileText, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, FileText, Eye, FileX } from 'lucide-react';
 
 interface SalesInvoice {
   id: string;
@@ -790,18 +790,29 @@ export function Sales() {
             <p className="text-gray-600 mt-1">Manage sales invoices and track payments</p>
           </div>
           {canManage && (
-            <button
-              onClick={async () => {
-                resetForm();
-                const nextInvoiceNumber = await generateNextInvoiceNumber();
-                setFormData(prev => ({ ...prev, invoice_number: nextInvoiceNumber }));
-                setModalOpen(true);
-              }}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-            >
-              <Plus className="w-5 h-5" />
-              Create Invoice
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={async () => {
+                  resetForm();
+                  const nextInvoiceNumber = await generateNextInvoiceNumber();
+                  setFormData(prev => ({ ...prev, invoice_number: nextInvoiceNumber }));
+                  setModalOpen(true);
+                }}
+                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+              >
+                <Plus className="w-5 h-5" />
+                Create Invoice
+              </button>
+              <button
+                onClick={() => {
+                  setCurrentPage('credit-notes');
+                }}
+                className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+              >
+                <FileX className="w-5 h-5" />
+                Credit Notes
+              </button>
+            </div>
           )}
         </div>
 

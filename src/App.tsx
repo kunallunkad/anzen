@@ -20,6 +20,8 @@ import { Setup } from './pages/Setup';
 import { GmailCallback } from './pages/GmailCallback';
 import SalesOrders from './pages/SalesOrders';
 import ImportRequirements from './pages/ImportRequirements';
+import MaterialReturns from './pages/MaterialReturns';
+import { CreditNotes } from './pages/CreditNotes';
 import { ApprovalNotifications } from './components/ApprovalNotifications';
 import { initializeNotificationChecks } from './utils/notifications';
 
@@ -84,6 +86,10 @@ function AppContent() {
         return <DeliveryChallan />;
       case 'sales':
         return <Sales />;
+      case 'credit-notes':
+        return <CreditNotes />;
+      case 'material-returns':
+        return <MaterialReturns />;
       case 'finance':
         return <Finance />;
       case 'settings':
