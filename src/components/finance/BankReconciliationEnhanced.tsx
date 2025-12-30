@@ -273,26 +273,25 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
-          const lines = parseStatementData(jsonData);
+          const { lines, metadata } = parseStatementDataWithMetadata(jsonData);
 
           if (lines.length === 0) {
             alert('No valid transactions found in the file.');
             return;
           }
 
-          // Create upload record first
           const { data: uploadRecord, error: uploadError } = await supabase
             .from('bank_statement_uploads')
             .insert({
               bank_account_id: selectedBank,
-              statement_period: `${new Date().toLocaleString('default', { month: 'long' })} ${new Date().getFullYear()}`,
-              statement_start_date: dateRange.start,
-              statement_end_date: dateRange.end,
+              statement_period: metadata.period || `${new Date().toLocaleString('default', { month: 'long' })} ${new Date().getFullYear()}`,
+              statement_start_date: metadata.startDate || dateRange.start,
+              statement_end_date: metadata.endDate || dateRange.end,
               currency: selectedAccount?.currency || 'IDR',
-              opening_balance: 0,
-              closing_balance: lines[lines.length - 1]?.balance || 0,
-              total_debits: lines.reduce((sum, l) => sum + l.debit, 0),
-              total_credits: lines.reduce((sum, l) => sum + l.credit, 0),
+              opening_balance: metadata.openingBalance || 0,
+              closing_balance: metadata.closingBalance || lines[lines.length - 1]?.balance || 0,
+              total_debits: metadata.totalDebits || lines.reduce((sum, l) => sum + l.debit, 0),
+              total_credits: metadata.totalCredits || lines.reduce((sum, l) => sum + l.credit, 0),
               transaction_count: lines.length,
               status: 'completed',
             })
@@ -338,72 +337,185 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
     }
   };
 
-  const parseStatementData = (rows: any[][]): StatementLine[] => {
+  const parseStatementDataWithMetadata = (rows: any[][]): { lines: StatementLine[]; metadata: any } => {
     const lines: StatementLine[] = [];
-    const headerRow = rows[0] || [];
+    const metadata: any = {
+      period: '',
+      startDate: '',
+      endDate: '',
+      openingBalance: 0,
+      closingBalance: 0,
+      totalDebits: 0,
+      totalCredits: 0,
+    };
 
-    let dateCol = -1, descCol = -1, refCol = -1, debitCol = -1, creditCol = -1, balanceCol = -1;
+    let year = new Date().getFullYear();
+    let month = new Date().getMonth() + 1;
 
-    headerRow.forEach((cell: any, idx: number) => {
-      const cellStr = String(cell || '').toLowerCase();
-      if (cellStr.includes('date') || cellStr.includes('tanggal')) dateCol = idx;
-      if (cellStr.includes('description') || cellStr.includes('keterangan') || cellStr.includes('uraian')) descCol = idx;
-      if (cellStr.includes('ref') || cellStr.includes('no.')) refCol = idx;
-      if (cellStr.includes('debit') || cellStr.includes('keluar')) debitCol = idx;
-      if (cellStr.includes('credit') || cellStr.includes('kredit') || cellStr.includes('masuk')) creditCol = idx;
-      if (cellStr.includes('balance') || cellStr.includes('saldo')) balanceCol = idx;
-    });
-
-    if (dateCol === -1) dateCol = 0;
-    if (descCol === -1) descCol = 1;
-    if (debitCol === -1) debitCol = 2;
-    if (creditCol === -1) creditCol = 3;
-    if (balanceCol === -1) balanceCol = 4;
-
-    for (let i = 1; i < rows.length; i++) {
+    for (let i = 0; i < Math.min(10, rows.length); i++) {
       const row = rows[i];
       if (!row || row.length === 0) continue;
 
-      const dateVal = row[dateCol];
-      let parsedDate = '';
+      const firstCell = String(row[0] || '');
+      if (firstCell.includes('Periode')) {
+        const periodeMatch = firstCell.match(/(\d{2})\/(\d{2})\/(\d{4})\s*-\s*(\d{2})\/(\d{2})\/(\d{4})/);
+        if (periodeMatch) {
+          const startDay = parseInt(periodeMatch[1]);
+          const startMonth = parseInt(periodeMatch[2]);
+          const startYear = parseInt(periodeMatch[3]);
+          const endDay = parseInt(periodeMatch[4]);
+          const endMonth = parseInt(periodeMatch[5]);
+          const endYear = parseInt(periodeMatch[6]);
 
-      if (typeof dateVal === 'number') {
-        const excelDate = new Date((dateVal - 25569) * 86400 * 1000);
-        parsedDate = excelDate.toISOString().split('T')[0];
-      } else if (dateVal) {
-        const dateStr = String(dateVal);
-        const parts = dateStr.split(/[\/\-\.]/);
-        if (parts.length === 3) {
-          if (parts[0].length === 4) {
-            parsedDate = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-          } else {
-            parsedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-          }
+          year = startYear;
+          month = startMonth;
+
+          metadata.startDate = `${startYear}-${String(startMonth).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
+          metadata.endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
+
+          const monthNames = ['', 'JANUARI', 'FEBRUARI', 'MARET', 'APRIL', 'MEI', 'JUNI', 'JULI', 'AGUSTUS', 'SEPTEMBER', 'OKTOBER', 'NOVEMBER', 'DESEMBER'];
+          metadata.period = `${monthNames[startMonth]} ${startYear}`;
         }
       }
+    }
 
-      if (!parsedDate) continue;
+    let headerRowIdx = -1;
+    for (let i = 0; i < Math.min(20, rows.length); i++) {
+      const row = rows[i];
+      if (!row || row.length === 0) continue;
 
-      const parseAmount = (val: any): number => {
-        if (!val) return 0;
-        const str = String(val).replace(/[^\d.-]/g, '');
-        return parseFloat(str) || 0;
-      };
+      const firstCell = String(row[0] || '').toLowerCase();
+      if (firstCell.includes('tanggal') && firstCell.includes('transaksi')) {
+        headerRowIdx = i;
+        break;
+      }
+    }
+
+    if (headerRowIdx === -1) {
+      console.error('Could not find BCA column headers');
+      return [];
+    }
+
+    const headerRow = rows[headerRowIdx];
+    let dateCol = -1, descCol = -1, branchCol = -1, amountCol = -1, balanceCol = -1;
+
+    headerRow.forEach((cell: any, idx: number) => {
+      const cellStr = String(cell || '').toLowerCase();
+      if (cellStr.includes('tanggal')) dateCol = idx;
+      if (cellStr.includes('keterangan')) descCol = idx;
+      if (cellStr.includes('cabang')) branchCol = idx;
+      if (cellStr.includes('jumlah')) amountCol = idx;
+      if (cellStr.includes('saldo')) balanceCol = idx;
+    });
+
+    if (dateCol === -1 || descCol === -1 || amountCol === -1) {
+      console.error('Missing required columns', { dateCol, descCol, amountCol });
+      return [];
+    }
+
+    for (let i = headerRowIdx + 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length === 0) continue;
+
+      const firstCell = String(row[0] || '');
+
+      if (firstCell.includes('Saldo Awal') ||
+          firstCell.includes('Mutasi Debet') ||
+          firstCell.includes('Mutasi Kredit') ||
+          firstCell.includes('Saldo Akhir')) {
+        break;
+      }
+
+      const dateVal = row[dateCol];
+      if (!dateVal) continue;
+
+      const dateStr = String(dateVal).trim();
+      const dateMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})$/);
+      if (!dateMatch) continue;
+
+      const day = parseInt(dateMatch[1]);
+      const mon = parseInt(dateMatch[2]);
+
+      if (day < 1 || day > 31 || mon < 1 || mon > 12) continue;
+
+      const parsedDate = `${year}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+      const amountStr = String(row[amountCol] || '').trim();
+      const isCR = amountStr.includes(' CR');
+      const isDB = amountStr.includes(' DB');
+
+      const amountCleaned = amountStr.replace(/[^\d,\.]/g, '');
+      const amount = parseFloat(amountCleaned.replace(/,/g, '')) || 0;
+
+      let debit = 0, credit = 0;
+      if (isCR) {
+        credit = amount;
+      } else if (isDB) {
+        debit = amount;
+      } else {
+        debit = amount;
+      }
+
+      const balanceStr = String(row[balanceCol] || '').trim();
+      const balanceCleaned = balanceStr.replace(/[^\d,\.]/g, '');
+      const balance = parseFloat(balanceCleaned.replace(/,/g, '')) || 0;
+
+      const description = String(row[descCol] || '').trim();
+      const branch = branchCol >= 0 ? String(row[branchCol] || '').trim() : '';
 
       lines.push({
         id: `temp-${i}`,
         date: parsedDate,
-        description: String(row[descCol] || ''),
-        reference: refCol >= 0 ? String(row[refCol] || '') : '',
-        debit: parseAmount(row[debitCol]),
-        credit: parseAmount(row[creditCol]),
-        balance: parseAmount(row[balanceCol]),
+        description: description,
+        reference: branch,
+        debit: debit,
+        credit: credit,
+        balance: balance,
         currency: selectedAccount?.currency || 'IDR',
         status: 'unmatched',
       });
     }
 
-    return lines;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length === 0) continue;
+
+      const firstCell = String(row[0] || '');
+
+      if (firstCell.includes('Saldo Awal')) {
+        const valueCell = String(row[1] || row[0] || '');
+        const amountMatch = valueCell.match(/[\d,\.]+/);
+        if (amountMatch) {
+          metadata.openingBalance = parseFloat(amountMatch[0].replace(/,/g, '')) || 0;
+        }
+      }
+
+      if (firstCell.includes('Mutasi Debet')) {
+        const valueCell = String(row[1] || row[0] || '');
+        const amountMatch = valueCell.match(/[\d,\.]+/);
+        if (amountMatch) {
+          metadata.totalDebits = parseFloat(amountMatch[0].replace(/,/g, '')) || 0;
+        }
+      }
+
+      if (firstCell.includes('Mutasi Kredit')) {
+        const valueCell = String(row[1] || row[0] || '');
+        const amountMatch = valueCell.match(/[\d,\.]+/);
+        if (amountMatch) {
+          metadata.totalCredits = parseFloat(amountMatch[0].replace(/,/g, '')) || 0;
+        }
+      }
+
+      if (firstCell.includes('Saldo Akhir')) {
+        const valueCell = String(row[1] || row[0] || '');
+        const amountMatch = valueCell.match(/[\d,\.]+/);
+        if (amountMatch) {
+          metadata.closingBalance = parseFloat(amountMatch[0].replace(/,/g, '')) || 0;
+        }
+      }
+    }
+
+    return { lines, metadata };
   };
 
   const autoMatchTransactions = async () => {
