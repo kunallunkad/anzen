@@ -155,6 +155,10 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
+      console.log('Uploading PDF to:', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-bca-statement`);
+      console.log('File size:', file.size, 'bytes');
+      console.log('File type:', file.type);
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-bca-statement`,
         {
@@ -166,7 +170,19 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
         }
       );
 
-      const result = await response.json();
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
+      let result;
+      try {
+        result = await response.json();
+        console.log('Response body:', result);
+      } catch (jsonError) {
+        console.error('Failed to parse response as JSON:', jsonError);
+        const text = await response.text();
+        console.error('Response text:', text);
+        throw new Error('Server returned invalid response');
+      }
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to parse PDF');
@@ -177,7 +193,8 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
       loadStatementLines();
     } catch (error: any) {
       console.error('PDF upload error:', error);
-      alert(`❌ Failed to parse PDF: ${error.message}`);
+      console.error('Error stack:', error.stack);
+      alert(`❌ Failed to parse PDF: ${error.message}\n\nCheck browser console for details.`);
     }
   };
 
