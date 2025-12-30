@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { DataTable } from '../components/DataTable';
 import { Modal } from '../components/Modal';
-import { FileUpload } from '../components/FileUpload';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -127,39 +126,61 @@ export function Products() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      let successCount = 0;
+
       for (const fileData of uploadingFiles) {
-        const fileName = `${Date.now()}_${fileData.file.name}`;
-        const filePath = `${selectedProductId}/${fileName}`;
+        try {
+          const fileName = `${Date.now()}_${fileData.file.name}`;
+          const filePath = `${selectedProductId}/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('product-documents')
-          .upload(filePath, fileData.file);
+          console.log('Uploading file:', fileName, 'Type:', fileData.document_type);
 
-        if (uploadError) throw uploadError;
+          const { error: uploadError } = await supabase.storage
+            .from('product-documents')
+            .upload(filePath, fileData.file);
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('product-documents')
-          .getPublicUrl(filePath);
+          if (uploadError) {
+            console.error('Storage upload error:', uploadError);
+            throw uploadError;
+          }
 
-        const { error: dbError } = await supabase
-          .from('product_documents')
-          .insert([{
-            product_id: selectedProductId,
-            file_url: publicUrl,
-            file_name: fileData.file.name,
-            document_type: fileData.document_type || 'other',
-            file_size: fileData.file.size,
-            uploaded_by: user.id,
-          }]);
+          const { data: { publicUrl } } = supabase.storage
+            .from('product-documents')
+            .getPublicUrl(filePath);
 
-        if (dbError) throw dbError;
+          console.log('File uploaded, inserting DB record...');
+
+          const { error: dbError } = await supabase
+            .from('product_documents')
+            .insert([{
+              product_id: selectedProductId,
+              file_url: publicUrl,
+              file_name: fileData.file.name,
+              document_type: fileData.document_type || 'other',
+              file_size: fileData.file.size,
+              uploaded_by: user.id,
+            }]);
+
+          if (dbError) {
+            console.error('Database insert error:', dbError);
+            throw dbError;
+          }
+
+          successCount++;
+        } catch (fileError: any) {
+          console.error(`Failed to upload ${fileData.file.name}:`, fileError);
+          alert(`Failed to upload ${fileData.file.name}: ${fileError.message}`);
+        }
       }
 
       setUploadModalOpen(false);
       setUploadingFiles([]);
-      loadProductDocuments(selectedProductId, selectedProductName);
-      loadProducts();
-      alert('Documents uploaded successfully');
+
+      if (successCount > 0) {
+        await loadProductDocuments(selectedProductId, selectedProductName);
+        await loadProducts();
+        alert(`Successfully uploaded ${successCount} document(s)`);
+      }
     } catch (error: any) {
       console.error('Error uploading files:', error);
       alert('Failed to upload documents: ' + error.message);
@@ -234,31 +255,48 @@ export function Products() {
         if (!user) throw new Error('Not authenticated');
 
         for (const fileData of formUploadingFiles) {
-          const fileName = `${Date.now()}_${fileData.file.name}`;
-          const filePath = `${productId}/${fileName}`;
+          try {
+            const fileName = `${Date.now()}_${fileData.file.name}`;
+            const filePath = `${productId}/${fileName}`;
 
-          const { error: uploadError } = await supabase.storage
-            .from('product-documents')
-            .upload(filePath, fileData.file);
+            console.log('Uploading document:', fileName, 'Type:', fileData.document_type);
 
-          if (uploadError) throw uploadError;
+            const { error: uploadError } = await supabase.storage
+              .from('product-documents')
+              .upload(filePath, fileData.file);
 
-          const { data: { publicUrl } } = supabase.storage
-            .from('product-documents')
-            .getPublicUrl(filePath);
+            if (uploadError) {
+              console.error('Storage error:', uploadError);
+              throw uploadError;
+            }
 
-          const { error: dbError } = await supabase
-            .from('product_documents')
-            .insert([{
-              product_id: productId,
-              file_url: publicUrl,
-              file_name: fileData.file.name,
-              document_type: fileData.document_type || 'other',
-              file_size: fileData.file.size,
-              uploaded_by: user.id,
-            }]);
+            const { data: { publicUrl } } = supabase.storage
+              .from('product-documents')
+              .getPublicUrl(filePath);
 
-          if (dbError) throw dbError;
+            console.log('Inserting DB record for:', fileData.file.name);
+
+            const { error: dbError } = await supabase
+              .from('product_documents')
+              .insert([{
+                product_id: productId,
+                file_url: publicUrl,
+                file_name: fileData.file.name,
+                document_type: fileData.document_type || 'other',
+                file_size: fileData.file.size,
+                uploaded_by: user.id,
+              }]);
+
+            if (dbError) {
+              console.error('DB error:', dbError);
+              throw dbError;
+            }
+
+            console.log('Successfully uploaded:', fileData.file.name);
+          } catch (docError: any) {
+            console.error(`Failed to upload document ${fileData.file.name}:`, docError);
+            alert(`Warning: Failed to upload ${fileData.file.name}: ${docError.message}`);
+          }
         }
       }
 
@@ -681,20 +719,36 @@ export function Products() {
               </div>
             )}
 
-            <FileUpload
-              onFilesSelected={(files) => {
-                const newFiles = files.map((file) => ({
-                  file,
-                  document_type: 'coa',
-                }));
-                setFormUploadingFiles([...formUploadingFiles, ...newFiles]);
-              }}
-              accept="*"
-              multiple
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Optional: Upload COA, MSDS, specifications, or regulatory documents
-            </p>
+            <div
+              onClick={() => document.getElementById('product-file-input')?.click()}
+              className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 transition"
+            >
+              <Upload className="w-10 h-10 mx-auto mb-2 text-gray-400" />
+              <p className="text-sm text-gray-600">
+                <span className="font-medium text-blue-600">Click to upload</span> or drag files
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                PDF, DOCX, XLSX, PNG, JPG (max 10MB per file)
+              </p>
+              <input
+                id="product-file-input"
+                type="file"
+                multiple
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                onChange={(e) => {
+                  const files = e.target.files;
+                  if (!files) return;
+
+                  const newFiles = Array.from(files).map((file) => ({
+                    file,
+                    document_type: 'coa',
+                  }));
+                  setFormUploadingFiles([...formUploadingFiles, ...newFiles]);
+                  e.target.value = '';
+                }}
+                className="hidden"
+              />
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
@@ -852,17 +906,36 @@ export function Products() {
             </div>
           ))}
 
-          <FileUpload
-            onFilesSelected={(files) => {
-              const newFiles = files.map((file) => ({
-                file,
-                document_type: 'coa',
-              }));
-              setUploadingFiles([...uploadingFiles, ...newFiles]);
-            }}
-            accept="*"
-            multiple
-          />
+          <div
+            onClick={() => document.getElementById('product-upload-input')?.click()}
+            className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 transition"
+          >
+            <Upload className="w-10 h-10 mx-auto mb-2 text-gray-400" />
+            <p className="text-sm text-gray-600">
+              <span className="font-medium text-blue-600">Click to upload</span> documents
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              PDF, DOCX, XLSX, PNG, JPG (max 10MB per file)
+            </p>
+            <input
+              id="product-upload-input"
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+              onChange={(e) => {
+                const files = e.target.files;
+                if (!files) return;
+
+                const newFiles = Array.from(files).map((file) => ({
+                  file,
+                  document_type: 'coa',
+                }));
+                setUploadingFiles([...uploadingFiles, ...newFiles]);
+                e.target.value = '';
+              }}
+              className="hidden"
+            />
+          </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
             <button
