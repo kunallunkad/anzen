@@ -46,6 +46,9 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
   const [expenses, setExpenses] = useState<any[]>([]);
   const [linkToExpense, setLinkToExpense] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [ocrError, setOcrError] = useState<{message: string; canUseOCR: boolean; suggestions: string[]} | null>(null);
+  const [ocrPreview, setOcrPreview] = useState<any | null>(null);
+  const [lastUploadedFile, setLastUploadedFile] = useState<File | null>(null);
 
   const expenseCategories = [
     { value: 'duty_customs', label: 'Duty & Customs (BM)', type: 'import' },
@@ -97,19 +100,17 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
   const loadExpenses = async () => {
     try {
       const { data, error } = await supabase
-        .from('expenses')
+        .from('finance_expenses')
         .select(`
           id,
           expense_date,
           description,
           amount,
-          currency,
-          category,
-          vendor_name,
-          status
+          expense_category,
+          voucher_number
         `)
         .order('expense_date', { ascending: false })
-        .limit(100);
+        .limit(200);
 
       if (error) throw error;
       setExpenses(data || []);
@@ -172,18 +173,23 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
     }
   };
 
-  const handlePDFUpload = async (file: File) => {
+  const handlePDFUpload = async (file: File, useOCR = false, previewOnly = false) => {
     try {
+      setUploading(true);
+      setOcrError(null);
+
       const formData = new FormData();
       formData.append('file', file);
       formData.append('bankAccountId', selectedBank);
+      if (useOCR) {
+        formData.append('useOCR', 'true');
+      }
+      if (previewOnly) {
+        formData.append('previewOnly', 'true');
+      }
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
-
-      console.log('Uploading PDF to:', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-bca-statement`);
-      console.log('File size:', file.size, 'bytes');
-      console.log('File type:', file.type);
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-bca-statement`,
@@ -196,31 +202,63 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
         }
       );
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-
-      let result;
-      try {
-        result = await response.json();
-        console.log('Response body:', result);
-      } catch (jsonError) {
-        console.error('Failed to parse response as JSON:', jsonError);
-        const text = await response.text();
-        console.error('Response text:', text);
-        throw new Error('Server returned invalid response');
-      }
+      const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to parse PDF');
+        if (result.canUseOCR) {
+          setOcrError({
+            message: result.error,
+            canUseOCR: true,
+            suggestions: result.suggestions
+          });
+          setLastUploadedFile(file);
+        } else {
+          throw new Error(result.error || 'Failed to parse PDF');
+        }
+        return;
       }
 
-      alert(`✅ Successfully imported ${result.transactionCount} transactions from ${result.period}`);
+      if (result.preview) {
+        setOcrPreview(result);
+        return;
+      }
+
+      const ocrUsed = result.usedOCR ? ' (via OCR)' : '';
+      alert(`✅ Successfully imported ${result.transactionCount} transactions from ${result.period}${ocrUsed}`);
+      setOcrError(null);
+      setLastUploadedFile(null);
       await autoMatchTransactions();
       loadStatementLines();
     } catch (error: any) {
       console.error('PDF upload error:', error);
-      console.error('Error stack:', error.stack);
-      alert(`❌ Failed to parse PDF: ${error.message}\n\nCheck browser console for details.`);
+      alert(`❌ Failed to parse PDF: ${error.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRunOCR = async () => {
+    if (!lastUploadedFile) return;
+    setUploading(true);
+    setOcrError(null);
+    try {
+      await handlePDFUpload(lastUploadedFile, true, true);
+    } catch (error: any) {
+      alert(`❌ OCR failed: ${error.message}`);
+      setUploading(false);
+    }
+  };
+
+  const handleConfirmOCRPreview = async () => {
+    if (!lastUploadedFile) return;
+    setOcrPreview(null);
+    setUploading(true);
+    try {
+      await handlePDFUpload(lastUploadedFile, true, false);
+    } catch (error: any) {
+      alert(`❌ Failed to save: ${error.message}`);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -369,18 +407,107 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
   };
 
   const autoMatchTransactions = async () => {
-    try {
-      // Basic matching logic - can be enhanced
-      const { data: expenses } = await supabase
-        .from('finance_expenses')
-        .select('id, expense_date, amount, description')
-        .gte('expense_date', dateRange.start)
-        .lte('expense_date', dateRange.end);
+    if (!selectedBank) return;
 
-      // Match with expenses
-      // This is a simplified version - full implementation would check more criteria
-    } catch (err) {
+    try {
+      // Load unmatched statement lines
+      const { data: lines, error: linesError } = await supabase
+        .from('bank_statement_lines')
+        .select('*')
+        .eq('bank_account_id', selectedBank)
+        .eq('reconciliation_status', 'unmatched')
+        .gte('transaction_date', dateRange.start)
+        .lte('transaction_date', dateRange.end);
+
+      if (linesError) throw linesError;
+      if (!lines || lines.length === 0) {
+        alert('No unmatched transactions to process');
+        return;
+      }
+
+      // Load expenses
+      const { data: expensesList, error: expError } = await supabase
+        .from('finance_expenses')
+        .select('id, expense_date, amount, description, voucher_number');
+
+      if (expError) throw expError;
+      if (!expensesList || expensesList.length === 0) {
+        alert('No expenses found to match against');
+        return;
+      }
+
+      let matchCount = 0;
+
+      for (const line of lines) {
+        const amount = line.debit_amount || line.credit_amount || 0;
+
+        // Try to find matching expense
+        let matchedExpense = null;
+
+        // 1. Try match by amount (exact match within 0.01)
+        matchedExpense = expensesList.find(exp =>
+          Math.abs(exp.amount - amount) < 0.01
+        );
+
+        // 2. If no match, try by voucher number in description
+        if (!matchedExpense && line.description) {
+          for (const exp of expensesList) {
+            if (exp.voucher_number && line.description.includes(exp.voucher_number)) {
+              matchedExpense = exp;
+              break;
+            }
+          }
+        }
+
+        if (matchedExpense) {
+          // Update the line with matched expense
+          await supabase
+            .from('bank_statement_lines')
+            .update({
+              matched_expense_id: matchedExpense.id,
+              reconciliation_status: 'suggested',
+              notes: `Auto-matched: ${matchedExpense.description}`,
+            })
+            .eq('id', line.id);
+
+          matchCount++;
+        }
+      }
+
+      alert(`✅ Auto-match complete!\nMatched ${matchCount} out of ${lines.length} transactions`);
+      loadStatementLines();
+    } catch (err: any) {
       console.error('Error auto-matching:', err);
+      alert('❌ Auto-match failed: ' + err.message);
+    }
+  };
+
+  const clearAllReconciliationData = async () => {
+    if (!selectedBank) return;
+
+    const confirmed = confirm(
+      '⚠️ WARNING: This will delete ALL reconciliation data for this bank account.\n\n' +
+      'This includes:\n' +
+      '- All statement lines\n' +
+      '- All matches and links\n' +
+      '\nAre you sure you want to proceed?'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from('bank_statement_lines')
+        .delete()
+        .eq('bank_account_id', selectedBank);
+
+      if (error) throw error;
+
+      alert('✅ All reconciliation data cleared successfully');
+      loadStatementLines();
+    } catch (err: any) {
+      console.error('Error clearing data:', err);
+      alert('❌ Failed to clear data: ' + err.message);
     }
   };
 
@@ -546,15 +673,25 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => { autoMatchTransactions(); loadStatementLines(); }}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-              title="Auto-match transactions"
+              onClick={() => { autoMatchTransactions(); }}
+              disabled={!selectedBank}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:opacity-50"
+              title="Auto-match transactions by amount and voucher number"
             >
               <RefreshCw className="w-4 h-4" />
               Auto-Match
             </button>
             {canManage && (
               <>
+                <button
+                  onClick={clearAllReconciliationData}
+                  disabled={!selectedBank}
+                  className="flex items-center gap-1 px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50"
+                  title="Clear all reconciliation data for this account"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Clear Data
+                </button>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -872,25 +1009,22 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
                         name="expense_id"
                         required
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                        disabled={expenses.filter(exp => exp.currency === recordingLine.currency).length === 0}
+                        disabled={expenses.length === 0}
                       >
                         <option value="">
-                          {expenses.filter(exp => exp.currency === recordingLine.currency).length === 0
-                            ? `No expenses found in ${recordingLine.currency}`
-                            : 'Choose an expense...'}
+                          {expenses.length === 0 ? 'No expenses found' : 'Choose an expense...'}
                         </option>
-                        {expenses.filter(exp => exp.currency === recordingLine.currency).map(expense => (
+                        {expenses.map(expense => (
                           <option key={expense.id} value={expense.id}>
-                            {new Date(expense.expense_date).toLocaleDateString('id-ID')} - {expense.vendor_name || expense.description} - {getCurrencySymbol(expense.currency)} {expense.amount.toLocaleString('id-ID')} {expense.status ? `[${expense.status}]` : ''}
+                            {expense.voucher_number ? `[${expense.voucher_number}] ` : ''}
+                            {new Date(expense.expense_date).toLocaleDateString('id-ID')} -
+                            {expense.description} -
+                            Rp {expense.amount.toLocaleString('id-ID')}
                           </option>
                         ))}
                       </select>
                       <p className="text-xs text-gray-500 mt-1">
-                        {expenses.filter(exp => exp.currency === recordingLine.currency).length > 0 ? (
-                          <>Showing {expenses.filter(exp => exp.currency === recordingLine.currency).length} expenses in {recordingLine.currency}</>
-                        ) : (
-                          <>No expenses found in {recordingLine.currency}. Total expenses loaded: {expenses.length} (other currencies)</>
-                        )}
+                        Showing {expenses.length} expenses. Match by voucher number or amount.
                       </p>
                     </div>
                     <button
@@ -953,6 +1087,147 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
           </div>
         )}
       </Modal>
+
+      {ocrError && (
+        <Modal
+          isOpen={true}
+          onClose={() => {
+            setOcrError(null);
+            setLastUploadedFile(null);
+          }}
+          title="PDF Extraction Failed"
+        >
+          <div className="space-y-4">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-yellow-800 text-sm font-medium mb-2">{ocrError.message}</p>
+              <div className="space-y-2">
+                <p className="text-sm text-yellow-700 font-medium">Recommended options:</p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-yellow-700">
+                  {ocrError.suggestions.map((suggestion, idx) => (
+                    <li key={idx}>{suggestion}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {ocrError.canUseOCR && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-blue-800 text-sm font-medium mb-2">Advanced Option: OCR Processing</p>
+                <p className="text-blue-700 text-xs mb-3">
+                  Optical Character Recognition (OCR) can extract text from image-based or encrypted PDFs.
+                  This process takes 30-60 seconds and requires Google Vision API configuration.
+                  You'll be able to preview the results before saving.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleRunOCR}
+                    disabled={uploading}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
+                  >
+                    {uploading ? 'Processing with OCR...' : 'Run OCR Anyway'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setOcrError(null);
+                      setLastUploadedFile(null);
+                    }}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {ocrPreview && (
+        <Modal
+          isOpen={true}
+          onClose={() => setOcrPreview(null)}
+          title="OCR Preview - Confirm Before Saving"
+        >
+          <div className="space-y-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <p className="text-green-800 text-sm font-medium mb-2">
+                ✅ OCR extracted {ocrPreview.transactionCount} transactions
+              </p>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-gray-600">Period:</span>
+                  <span className="ml-2 font-medium text-gray-900">{ocrPreview.period}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Opening Balance:</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {selectedAccount?.currency} {ocrPreview.openingBalance.toLocaleString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Closing Balance:</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {selectedAccount?.currency} {ocrPreview.closingBalance.toLocaleString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Transactions:</span>
+                  <span className="ml-2 font-medium text-gray-900">{ocrPreview.transactionCount}</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-medium text-gray-900 mb-2">Sample Transactions (First 10):</h4>
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-2 py-1 text-left">Date</th>
+                      <th className="px-2 py-1 text-left">Description</th>
+                      <th className="px-2 py-1 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ocrPreview.transactions.map((txn: any, idx: number) => (
+                      <tr key={idx} className="border-t">
+                        <td className="px-2 py-1">{txn.date}</td>
+                        <td className="px-2 py-1 truncate max-w-xs">{txn.description}</td>
+                        <td className="px-2 py-1 text-right">
+                          {selectedAccount?.currency} {(txn.debitAmount || txn.creditAmount).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <p className="text-yellow-800 text-xs">
+                ⚠️ Please verify the extracted data looks correct before confirming.
+                OCR may have minor errors in dates, amounts, or descriptions.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleConfirmOCRPreview}
+                disabled={uploading}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium"
+              >
+                {uploading ? 'Saving...' : 'Confirm & Save'}
+              </button>
+              <button
+                onClick={() => setOcrPreview(null)}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

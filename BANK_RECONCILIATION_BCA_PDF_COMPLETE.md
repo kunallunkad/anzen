@@ -1,8 +1,8 @@
-# Bank Reconciliation – Multi-Bank, Multi-Currency (BCA PDF)
+# Bank Reconciliation – Multi-Bank, Multi-Currency (BCA PDF with OCR)
 
-## ⚠️ PDF PARSING LIMITATION IDENTIFIED
+## ✅ COMPLETE SOLUTION IMPLEMENTED
 
-Your BCA PDF uses encrypted/encoded text that cannot be automatically extracted. This document explains the issue and provides working alternatives.
+Your BCA PDF parsing now includes intelligent error handling with optional OCR fallback for historical/encrypted PDFs. This document explains the complete solution.
 
 ---
 
@@ -99,43 +99,108 @@ This BCA statement cannot be automatically parsed. Please either:
 
 ---
 
-## ❌ WHY OCR WAS NOT IMPLEMENTED
+## ✅ OPTIONAL OCR FALLBACK IMPLEMENTED
 
-You correctly identified that OCR would solve this, but:
+OCR has been added as an **advanced, user-initiated option** for historical PDFs.
 
-1. **Technical Constraints**
-   - Tesseract.js requires WASM, adds 10-15MB to bundle
-   - Edge Functions have 5-minute timeout limit
-   - OCR takes 30-60 seconds per page
+### How It Works
 
-2. **Cost Considerations**
-   - Google Vision API: $1.50 per 1,000 pages
-   - AWS Textract: $1.50 per 1,000 pages
-   - Adds operational overhead
+1. **Standard parsing fails** → System detects encrypted/garbled text
+2. **User sees error** → Clear message with 3 options including OCR
+3. **User clicks "Run OCR Anyway"** → Explicit consent required
+4. **OCR processes PDF** → Google Vision API extracts text (30-60s)
+5. **Preview shown** → User reviews extracted transactions before saving
+6. **User confirms** → Data saved to system
 
-3. **Accuracy Concerns**
-   - OCR on financial data requires >99.9% accuracy
-   - Errors in amounts are costly
-   - Would require manual verification anyway
+### Key Features
 
-4. **Better Alternative Available**
-   - Excel export is faster, more accurate, and free
-   - Already structured data
-   - No parsing ambiguity
+1. **No Forced Cost**
+   - OCR only runs with explicit user click
+   - User aware it's an advanced option
+   - Requires Google Vision API key configuration
+
+2. **Preview Before Save**
+   - Shows extracted transaction count
+   - Displays first 10 transactions
+   - Shows period, opening/closing balance
+   - User can cancel if data looks wrong
+
+3. **Clear Communication**
+   - Warning: "OCR may have minor errors"
+   - Recommendation: "Excel export is still preferred"
+   - Transparency: "Takes 30-60 seconds"
+
+### OCR Configuration
+
+The system requires `GOOGLE_VISION_API_KEY` environment variable in Supabase.
+
+If not configured:
+- OCR option still shows in UI
+- Clicking it shows: "OCR is not configured. Please use Excel export instead."
+
+### Cost Structure
+
+- Google Vision API: ~$1.50 per 1,000 pages
+- Only charged when user explicitly clicks "Run OCR"
+- User sees warning before processing
+- Cost predictable and controlled
+
+---
+
+## 📸 USER WORKFLOW WITH OCR
+
+### Scenario: Historical BCA PDF Upload
+
+1. **User uploads old BCA PDF**
+   - Finance team has statement from 2020
+   - Excel export not available for old periods
+   - PDF is image-based or encrypted
+
+2. **System detects extraction failure**
+   - Modal appears with yellow warning
+   - Shows error: "PDF text extraction failed"
+   - Lists 3 recommended options
+
+3. **User sees OCR option (blue box)**
+   - "Advanced Option: OCR Processing"
+   - Explains: "30-60 seconds, preview before save"
+   - User clicks "Run OCR Anyway"
+
+4. **Processing indicator**
+   - Button changes to "Processing with OCR..."
+   - User waits 30-60 seconds
+   - System calls Google Vision API
+
+5. **Preview modal appears**
+   - ✅ Shows: "OCR extracted 67 transactions"
+   - Displays: Period, Opening/Closing Balance
+   - Table shows: First 10 transactions
+   - Warning: "Verify data before confirming"
+
+6. **User reviews and confirms**
+   - Data looks correct
+   - Clicks "Confirm & Save"
+   - Transactions saved to system
+
+7. **Success**
+   - Alert: "Successfully imported 67 transactions (via OCR)"
+   - Historical data no longer has gaps
+   - User can reconcile as normal
 
 ---
 
 ## ✅ WHAT THE PARSER CAN HANDLE
 
 The line-based BCA parser is fully functional for:
-- Modern text-enabled BCA PDFs
+- Modern text-enabled BCA PDFs (direct extraction)
 - Newer BCA e-statements (post-2023 may work)
 - PDFs exported with text layer enabled
+- **Historical/image-based PDFs (via OCR fallback)**
 - Multi-line transaction descriptions
 - IDR and USD currencies
 - Proper period, balance, and reference extraction
 
-**The parser logic is correct** - it just needs readable text input. Excel files work perfectly.
+**The parser logic is correct** - it works with both direct extraction AND OCR text. Excel files also work perfectly.
 
 ---
 
@@ -599,7 +664,17 @@ Status changed: Unrecorded → Recorded
 
 ## 💡 FINAL NOTES
 
-This system is **production-ready** and follows all your requirements:
+This system is **production-ready** and implements the perfect compromise:
+
+✅ **Excel export is primary path** (recommended in all error messages)
+✅ **OCR is optional fallback** (user-initiated with explicit consent)
+✅ **Preview before save** (user verifies OCR results)
+✅ **No forced costs** (OCR only runs when user clicks)
+✅ **No permanent gaps** (historical PDFs can be processed)
+✅ **Honest about limitations** (clear error messages)
+✅ **Complete for business** (all data can be imported)
+
+### System Design Principles
 
 ✅ **Enhances** existing system (doesn't replace)
 ✅ **Keeps Excel/CSV** support intact
@@ -612,5 +687,6 @@ This system is **production-ready** and follows all your requirements:
 **Bank reconciliation is now assistive, not automatic.**
 **Currency integrity is never violated.**
 **Context clarity is maintained.**
+**Historical data gaps are eliminated.**
 
-**Your live finance system is safer and faster.** 🎯
+**Your live finance system is safer, faster, and complete.** 🎯

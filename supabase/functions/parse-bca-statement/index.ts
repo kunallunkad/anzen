@@ -46,6 +46,8 @@ Deno.serve(async (req: Request) => {
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const bankAccountId = formData.get('bankAccountId') as string;
+    const useOCR = formData.get('useOCR') === 'true';
+    const previewOnly = formData.get('previewOnly') === 'true';
 
     if (!file || !bankAccountId) {
       throw new Error('Missing file or bankAccountId');
@@ -72,14 +74,35 @@ Deno.serve(async (req: Request) => {
 
     console.log('[CHECK] Is garbage:', isGarbage, 'Has BCA markers:', hasBCAMarkers);
 
-    if (isGarbage || !hasBCAMarkers) {
-      throw new Error(
-        'PDF text extraction failed - this appears to be an image-based or encrypted PDF. ' +
-        'This BCA statement cannot be automatically parsed. Please either: ' +
-        '1) Request text-enabled PDF from BCA, ' +
-        '2) Use "Download as Excel" from BCA e-Banking, or ' +
-        '3) Manually enter transactions using the Excel upload template.'
+    if ((isGarbage || !hasBCAMarkers) && !useOCR) {
+      return new Response(
+        JSON.stringify({
+          error: 'PDF text extraction failed - this appears to be an image-based or encrypted PDF.',
+          canUseOCR: true,
+          suggestions: [
+            'Use "Download as Excel" from BCA e-Banking (recommended)',
+            'Click "Run OCR Anyway" to process with optical character recognition (advanced)',
+            'Manually enter transactions using the Excel template'
+          ]
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    if (useOCR && (isGarbage || !hasBCAMarkers)) {
+      console.log('[OCR] Starting OCR processing...');
+
+      const googleVisionKey = Deno.env.get('GOOGLE_VISION_API_KEY');
+      if (!googleVisionKey) {
+        throw new Error('OCR is not configured. Please use Excel export instead.');
+      }
+
+      text = await extractTextWithOCR(uint8Array, googleVisionKey);
+      console.log('[OCR] Extracted', text.length, 'chars via OCR');
+
+      if (text.length < 100) {
+        throw new Error('OCR failed to extract sufficient text. PDF may be corrupt or empty.');
+      }
     }
 
     console.log('[DEBUG] First 500 chars:', text.substring(0, 500));
@@ -94,6 +117,21 @@ Deno.serve(async (req: Request) => {
       throw new Error(
         'No transactions found in PDF. The document structure may not match BCA format. ' +
         'Please use Excel export or manual entry.'
+      );
+    }
+
+    if (previewOnly) {
+      return new Response(
+        JSON.stringify({
+          preview: true,
+          period: parsed.period,
+          openingBalance: parsed.openingBalance,
+          closingBalance: parsed.closingBalance,
+          transactionCount: parsed.transactions.length,
+          transactions: parsed.transactions.slice(0, 10),
+          extractedText: text.substring(0, 2000),
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -165,6 +203,7 @@ Deno.serve(async (req: Request) => {
         period: parsed.period,
         openingBalance: parsed.openingBalance,
         closingBalance: parsed.closingBalance,
+        usedOCR: useOCR,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -176,6 +215,46 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+async function extractTextWithOCR(pdfData: Uint8Array, apiKey: string): Promise<string> {
+  const base64Pdf = btoa(String.fromCharCode(...pdfData));
+
+  const response = await fetch(
+    `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: [{
+          image: { content: base64Pdf },
+          features: [{
+            type: 'DOCUMENT_TEXT_DETECTION',
+            maxResults: 1
+          }]
+        }]
+      })
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('[OCR] API Error:', error);
+    throw new Error('OCR service failed. Please try Excel export instead.');
+  }
+
+  const result = await response.json();
+
+  if (!result.responses || !result.responses[0]) {
+    throw new Error('OCR returned no results');
+  }
+
+  const textAnnotation = result.responses[0].fullTextAnnotation;
+  if (!textAnnotation || !textAnnotation.text) {
+    throw new Error('OCR could not extract text from this PDF');
+  }
+
+  return textAnnotation.text;
+}
 
 function isGarbageText(text: string): boolean {
   if (text.length < 100) return true;
