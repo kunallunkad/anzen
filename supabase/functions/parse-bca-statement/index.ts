@@ -65,12 +65,14 @@ Deno.serve(async (req: Request) => {
     
     const text = await extractTextFromPDF(uint8Array);
     console.log('Extracted text length:', text.length);
-    console.log('Sample:', text.substring(0, 500));
+    console.log('First 500 chars:', text.substring(0, 500));
+    console.log('Looking for SALDO AWAL:', text.includes('SALDO AWAL'));
+    console.log('Looking for date pattern:', /\d{2}\/\d{2}/.test(text));
     
     const parsed = parseBCAStatement(text, bankAccount.currency);
     
     if (!parsed.transactions || parsed.transactions.length === 0) {
-      throw new Error('No transactions found in PDF. Please check if this is a valid BCA statement.');
+      throw new Error('No transactions found in PDF. The file may be password-protected or corrupted.');
     }
 
     const fileName = `${bankAccountId}/${Date.now()}_${file.name}`;
@@ -156,32 +158,34 @@ Deno.serve(async (req: Request) => {
 async function extractTextFromPDF(pdfData: Uint8Array): Promise<string> {
   const decoder = new TextDecoder('utf-8', { fatal: false });
   const rawText = decoder.decode(pdfData);
-  let extractedText = '';
+  const parts: string[] = [];
 
+  // Extract text from PDF text objects
   const textObjectRegex = /BT\s+([\s\S]+?)\s+ET/g;
   for (const match of rawText.matchAll(textObjectRegex)) {
     const content = match[1];
+    // Look for text in parentheses or angle brackets
     for (const strMatch of content.matchAll(/[\(\<]([^\)\>]+)[\)\>]/g)) {
       let text = strMatch[1];
+      // Handle escape sequences
       text = text.replace(/\\([\\()rnt])/g, (_, char) => {
-        switch (char) {
-          case 'n': return ' ';
-          case 'r': return '';
-          case 't': return ' ';
-          case '\\': return '\\';
-          case '(': return '(';
-          case ')': return ')';
-          default: return char;
-        }
+        if (char === 'n') return ' ';
+        if (char === 'r') return '';
+        if (char === 't') return ' ';
+        if (char === '\\') return '\\';
+        if (char === '(') return '(';
+        if (char === ')') return ')';
+        return char;
       });
-      extractedText += text + ' ';
+      parts.push(text);
     }
   }
 
-  return extractedText;
+  return parts.join(' ');
 }
 
 function parseBCAStatement(text: string, currency: string) {
+  // Normalize spaces
   text = text.replace(/\s+/g, ' ');
 
   let period = '';
@@ -203,7 +207,9 @@ function parseBCAStatement(text: string, currency: string) {
     closingBalance = parseAmount(closingMatch[1]);
   }
 
-  console.log('Period:', period, 'Opening:', openingBalance, 'Closing:', closingBalance);
+  console.log('Period:', period);
+  console.log('Opening balance:', openingBalance);
+  console.log('Closing balance:', closingBalance);
 
   let startDate = '';
   let endDate = '';
@@ -232,36 +238,33 @@ function parseBCAStatement(text: string, currency: string) {
 
   const transactions: ParsedTransaction[] = [];
   
-  // Pattern: DD/MM followed by description, amount, maybe DB/CR, maybe balance
-  // More flexible - just look for DD/MM anywhere in the text
-  const linePattern = /(\d{2})\/(\d{2})[\s]+([^\d]+?)[\s]+(\d{1,3}(?:[,\.]\d{3})*(?:[,\.]\d{2})?)[\s]*(DB|CR)?[\s]*(\d{1,3}(?:[,\.]\d{3})*(?:[,\.]\d{2})?)?/gi;
+  // BCA format: DD/MM DESCRIPTION... BRANCH_CODE AMOUNT DB/CR BALANCE
+  // More flexible pattern that captures everything between date and amount
+  const pattern = /(\d{2})\/(\d{2})\s+(.+?)\s+([\d,\.]+)\s+(DB|CR)?\s*(?:([\d,\.]+))?/gi;
   
   let match;
-  while ((match = linePattern.exec(text)) !== null) {
+  let count = 0;
+  
+  while ((match = pattern.exec(text)) !== null) {
+    count++;
     const day = match[1];
     const month = match[2];
-    let desc = match[3].trim();
+    const desc = match[3];
     const amountStr = match[4];
     const indicator = match[5];
     const balanceStr = match[6];
 
-    // Validate date
     const dayNum = parseInt(day);
     const monthNumParsed = parseInt(month);
     
+    // Validate date
     if (dayNum > 31 || monthNumParsed > 12 || dayNum < 1 || monthNumParsed < 1) {
       continue;
     }
-
-    // Skip header lines
-    if (desc.match(/TANGGAL|KETERANGAN|MUTASI|SALDO/i)) {
+    
+    // Skip header/footer lines
+    if (desc.match(/TANGGAL|KETERANGAN|MUTASI|SALDO AWAL|halaman|Bersambung/i)) {
       continue;
-    }
-
-    // Clean description
-    desc = desc.replace(/[^A-Za-z0-9\s\-\/\.]/g, ' ').trim();
-    if (desc.length < 3) {
-      desc = 'Transaction';
     }
 
     const fullDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
@@ -269,10 +272,11 @@ function parseBCAStatement(text: string, currency: string) {
     const balance = balanceStr ? parseAmount(balanceStr) : null;
     const isDebit = !indicator || indicator.toUpperCase() === 'DB';
 
-    if (amount > 0 && amount < 1000000000000) {
+    // Only add valid transactions
+    if (amount > 0 && amount < 10000000000) {
       transactions.push({
         date: fullDate,
-        description: desc.substring(0, 500),
+        description: desc.trim().substring(0, 500),
         branchCode: '',
         debitAmount: isDebit ? amount : 0,
         creditAmount: isDebit ? 0 : amount,
@@ -281,10 +285,12 @@ function parseBCAStatement(text: string, currency: string) {
     }
   }
 
+  console.log(`Found ${count} potential matches, ${transactions.length} valid transactions`);
+
   const totalDebits = transactions.reduce((sum, t) => sum + t.debitAmount, 0);
   const totalCredits = transactions.reduce((sum, t) => sum + t.creditAmount, 0);
 
-  console.log(`Parsed: ${transactions.length} transactions, DR: ${totalDebits.toFixed(2)}, CR: ${totalCredits.toFixed(2)}`);
+  console.log(`Total Debits: ${totalDebits}, Total Credits: ${totalCredits}`);
 
   return {
     period,
@@ -299,20 +305,28 @@ function parseBCAStatement(text: string, currency: string) {
 }
 
 function parseAmount(str: string): number {
+  if (!str) return 0;
+  
   let cleaned = str.trim().replace(/[^0-9,\.]/g, '');
   
   const dotCount = (cleaned.match(/\./g) || []).length;
   const commaCount = (cleaned.match(/,/g) || []).length;
   
+  // Indonesian format: 103.566.421,00 or 103,566,421.00
   if (dotCount > 1) {
+    // Dots are thousands separators, comma is decimal
     cleaned = cleaned.replace(/\./g, '').replace(',', '.');
   } else if (commaCount > 1) {
+    // Commas are thousands separators
     cleaned = cleaned.replace(/,/g, '');
   } else if (dotCount === 1 && commaCount === 1) {
+    // Mixed: assume dots are thousands
     cleaned = cleaned.replace(/\./g, '').replace(',', '.');
   } else if (commaCount === 1 && dotCount === 0) {
+    // Single comma could be decimal
     cleaned = cleaned.replace(',', '.');
   }
   
-  return parseFloat(cleaned) || 0;
+  const result = parseFloat(cleaned) || 0;
+  return result;
 }
