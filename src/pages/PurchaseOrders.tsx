@@ -34,6 +34,8 @@ interface POItem {
   line_total: number;
   quantity_received: number;
   quantity_pending: number;
+  coa_code?: string;
+  specification?: string;
   notes?: string;
   products?: Product;
 }
@@ -103,6 +105,8 @@ export default function PurchaseOrders() {
       line_total: 0,
       quantity_received: 0,
       quantity_pending: 0,
+      coa_code: '',
+      specification: '',
     },
   ]);
 
@@ -310,6 +314,8 @@ export default function PurchaseOrders() {
         line_total: 0,
         quantity_received: 0,
         quantity_pending: 0,
+        coa_code: '',
+        specification: '',
       },
     ]);
   };
@@ -401,6 +407,8 @@ export default function PurchaseOrders() {
           discount_amount: item.discount_amount || 0,
           line_total: item.line_total,
           quantity_received: 0,
+          coa_code: item.coa_code || null,
+          specification: item.specification || null,
           notes: item.notes || null,
         }));
 
@@ -434,6 +442,8 @@ export default function PurchaseOrders() {
           discount_amount: item.discount_amount || 0,
           line_total: item.line_total,
           quantity_received: 0,
+          coa_code: item.coa_code || null,
+          specification: item.specification || null,
           notes: item.notes || null,
         }));
 
@@ -724,9 +734,9 @@ export default function PurchaseOrders() {
                   </button>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-3 overflow-x-auto">
                   {poItems.map((item, index) => (
-                    <div key={index} className="grid grid-cols-8 gap-2 items-end">
+                    <div key={index} className="grid grid-cols-12 gap-2 items-end min-w-max">
                       <div className="col-span-2">
                         <label className="block text-xs text-gray-600 mb-1">Product</label>
                         <select
@@ -742,6 +752,34 @@ export default function PurchaseOrders() {
                             </option>
                           ))}
                         </select>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-xs text-gray-600 mb-1">Specification</label>
+                        <input
+                          type="text"
+                          value={item.specification || ''}
+                          onChange={(e) => {
+                            const newItems = [...poItems];
+                            newItems[index].specification = e.target.value;
+                            setPOItems(newItems);
+                          }}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                          placeholder="Product specs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">COA No.</label>
+                        <input
+                          type="text"
+                          value={item.coa_code || ''}
+                          onChange={(e) => {
+                            const newItems = [...poItems];
+                            newItems[index].coa_code = e.target.value;
+                            setPOItems(newItems);
+                          }}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                          placeholder="COA"
+                        />
                       </div>
                       <div>
                         <label className="block text-xs text-gray-600 mb-1">Qty</label>
@@ -796,7 +834,7 @@ export default function PurchaseOrders() {
                           className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
                         />
                       </div>
-                      <div>
+                      <div className="col-span-2">
                         <label className="block text-xs text-gray-600 mb-1">Total</label>
                         <input
                           type="text"
