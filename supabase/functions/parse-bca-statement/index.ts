@@ -9,6 +9,7 @@ const corsHeaders = {
 interface ParsedTransaction {
   date: string;
   description: string;
+  reference: string;
   branchCode: string;
   debitAmount: number;
   creditAmount: number;
@@ -122,7 +123,7 @@ Deno.serve(async (req: Request) => {
       bank_account_id: bankAccountId,
       transaction_date: txn.date,
       description: txn.description,
-      reference: '',
+      reference: txn.reference,
       branch_code: txn.branchCode,
       debit_amount: txn.debitAmount,
       credit_amount: txn.creditAmount,
@@ -224,11 +225,9 @@ function parseBCAStatement(text: string, currency: string) {
     const mon = parseInt(dateMatch[2]);
     if (day < 1 || day > 31 || mon < 1 || mon > 12) continue;
 
-    // Collect ALL words until next date or reasonable limit
     let j = i + 1;
     let endPos = Math.min(i + 50, words.length);
     
-    // Find next date to know where this transaction ends
     for (let k = i + 1; k < endPos; k++) {
       if (words[k].match(/^\d{2}\/\d{2}$/)) {
         const nextDay = parseInt(words[k].split('/')[0]);
@@ -240,15 +239,12 @@ function parseBCAStatement(text: string, currency: string) {
       }
     }
 
-    // Collect entire transaction text
     const txnWords = words.slice(i + 1, endPos);
     const fullText = txnWords.join(' ');
 
-    // Skip header rows
     if (fullText.match(/TANGGAL|KETERANGAN|CABANG|MUTASI|SALDO|Halaman/i)) continue;
     if (fullText.trim().length < 3) continue;
 
-    // Extract amounts (numbers with dots/commas)
     const amounts: number[] = [];
     const amountPattern = /([\d,\.]+)/g;
     let amountMatch;
@@ -261,36 +257,25 @@ function parseBCAStatement(text: string, currency: string) {
 
     if (amounts.length === 0) continue;
 
-    // Check for CR indicator (credit)
     const isCredit = /\bCR\b/i.test(fullText);
     
-    // First amount is the transaction amount
     const amount = amounts[0];
-    // Last amount (if different) is usually the balance
     const balance = amounts.length > 1 ? amounts[amounts.length - 1] : null;
 
-    // Clean up description: remove DB/CR markers and amounts
-    let description = fullText
-      .replace(/\b(DB|CR)\b/gi, '')
-      .replace(/([\d,\.]+)/g, (match) => {
-        const val = parseAmount(match);
-        // Remove if it's the transaction amount or balance
-        if (val === amount || val === balance) return '';
-        return match;
-      })
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    // If description is empty after cleanup, use original text
-    if (description.length < 3) {
-      description = fullText.substring(0, 500);
+    let reference = '';
+    const refMatch = fullText.match(/\d{4}\/[\w\/]+/);
+    if (refMatch) {
+      reference = refMatch[0];
     }
+
+    let description = fullText.replace(/\s+/g, ' ').trim();
 
     const fullDate = `${year}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
     transactions.push({
       date: fullDate,
       description: description.substring(0, 500),
+      reference: reference.substring(0, 100),
       branchCode: '',
       debitAmount: isCredit ? 0 : amount,
       creditAmount: isCredit ? amount : 0,
