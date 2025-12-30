@@ -23,6 +23,7 @@ interface StatementLine {
   currency: string;
   status: 'matched' | 'suggested' | 'unmatched' | 'recorded';
   matchedEntry?: string;
+  matchedExpenseInfo?: string;
 }
 
 interface BankReconciliationEnhancedProps {
@@ -43,6 +44,8 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
   });
   const [recordingLine, setRecordingLine] = useState<StatementLine | null>(null);
   const [recordModal, setRecordModal] = useState(false);
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [linkToExpense, setLinkToExpense] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const expenseCategories = [
@@ -64,6 +67,7 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
 
   useEffect(() => {
     loadBankAccounts();
+    loadExpenses();
   }, []);
 
   useEffect(() => {
@@ -91,13 +95,46 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
     }
   };
 
+  const loadExpenses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select(`
+          id,
+          expense_date,
+          description,
+          amount,
+          currency,
+          category,
+          vendor_name,
+          status
+        `)
+        .in('status', ['draft', 'approved'])
+        .order('expense_date', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      setExpenses(data || []);
+    } catch (err) {
+      console.error('Error loading expenses:', err);
+    }
+  };
+
   const loadStatementLines = async () => {
     if (!selectedBank) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('bank_statement_lines')
-        .select('*')
+        .select(`
+          *,
+          matched_expense:expenses!bank_statement_lines_matched_expense_id_fkey(
+            id,
+            description,
+            vendor_name,
+            category
+          )
+        `)
         .eq('bank_account_id', selectedBank)
         .gte('transaction_date', dateRange.start)
         .lte('transaction_date', dateRange.end)
@@ -116,6 +153,7 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
         currency: row.currency || 'IDR',
         status: row.reconciliation_status || 'unmatched',
         matchedEntry: row.matched_entry_id,
+        matchedExpenseInfo: row.matched_expense ? `${row.matched_expense.vendor_name || row.matched_expense.description}` : undefined,
       }));
       setStatementLines(lines);
     } catch (err) {
@@ -430,6 +468,33 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
     }
   };
 
+  const handleLinkToExpense = async (line: StatementLine, expenseId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Link to existing expense
+      await supabase
+        .from('bank_statement_lines')
+        .update({
+          reconciliation_status: 'matched',
+          matched_expense_id: expenseId,
+          matched_at: new Date().toISOString(),
+          matched_by: user.id,
+        })
+        .eq('id', line.id);
+
+      setRecordModal(false);
+      setRecordingLine(null);
+      setLinkToExpense(false);
+      loadStatementLines();
+      alert('✅ Linked to expense successfully');
+    } catch (error: any) {
+      console.error('Error linking to expense:', error);
+      alert('❌ ' + error.message);
+    }
+  };
+
   const handleRecordReceipt = async (line: StatementLine, type: string, description: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -646,6 +711,11 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
                     {line.reference && (
                       <div className="text-xs text-gray-500 font-mono">{line.reference}</div>
                     )}
+                    {line.matchedExpenseInfo && (
+                      <div className="text-xs text-blue-600 font-medium mt-1">
+                        Linked: {line.matchedExpenseInfo}
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-right text-red-600 font-medium whitespace-nowrap">
                     {line.debit > 0 ? `${getCurrencySymbol(line.currency)} ${line.debit.toLocaleString('id-ID')}` : '-'}
@@ -708,7 +778,7 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
       )}
 
       {/* Recording Modal */}
-      <Modal isOpen={recordModal} onClose={() => { setRecordModal(false); setRecordingLine(null); }} title="Record Transaction">
+      <Modal isOpen={recordModal} onClose={() => { setRecordModal(false); setRecordingLine(null); setLinkToExpense(false); }} title="Record Transaction">
         {recordingLine && (
           <div className="space-y-4">
             <div className="p-3 bg-gray-50 rounded-lg">
@@ -740,49 +810,104 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
 
             {recordingLine.debit > 0 && (
               <div>
-                <h4 className="font-medium mb-2">Record as Expense</h4>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.currentTarget);
-                    const category = formData.get('category') as string;
-                    const description = formData.get('description') as string;
-                    handleRecordExpense(recordingLine, category, description);
-                  }}
-                  className="space-y-3"
-                >
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
-                    <select
-                      name="category"
-                      required
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select category...</option>
-                      {expenseCategories.map(cat => (
-                        <option key={cat.value} value={cat.value}>
-                          {cat.label} ({cat.type})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <input
-                      type="text"
-                      name="description"
-                      defaultValue={recordingLine.description}
-                      className="w-full px-3 py-2 border rounded-lg"
-                      placeholder="Optional: Override description"
-                    />
-                  </div>
+                <div className="flex gap-2 mb-3">
                   <button
-                    type="submit"
-                    className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    onClick={() => setLinkToExpense(false)}
+                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium ${!linkToExpense ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
                   >
-                    Record Expense
+                    Create New Expense
                   </button>
-                </form>
+                  <button
+                    onClick={() => setLinkToExpense(true)}
+                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium ${linkToExpense ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                  >
+                    Link to Existing Expense
+                  </button>
+                </div>
+
+                {!linkToExpense ? (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const formData = new FormData(e.currentTarget);
+                      const category = formData.get('category') as string;
+                      const description = formData.get('description') as string;
+                      handleRecordExpense(recordingLine, category, description);
+                    }}
+                    className="space-y-3"
+                  >
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                      <select
+                        name="category"
+                        required
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select category...</option>
+                        {expenseCategories.map(cat => (
+                          <option key={cat.value} value={cat.value}>
+                            {cat.label} ({cat.type})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                      <input
+                        type="text"
+                        name="description"
+                        defaultValue={recordingLine.description}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        placeholder="Optional: Override description"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      Create & Link Expense
+                    </button>
+                  </form>
+                ) : (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const formData = new FormData(e.currentTarget);
+                      const expenseId = formData.get('expense_id') as string;
+                      if (!expenseId) {
+                        alert('Please select an expense');
+                        return;
+                      }
+                      handleLinkToExpense(recordingLine, expenseId);
+                    }}
+                    className="space-y-3"
+                  >
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Select Expense *</label>
+                      <select
+                        name="expense_id"
+                        required
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                      >
+                        <option value="">Choose an expense...</option>
+                        {expenses.filter(exp => exp.currency === recordingLine.currency).map(expense => (
+                          <option key={expense.id} value={expense.id}>
+                            {new Date(expense.expense_date).toLocaleDateString('id-ID')} - {expense.vendor_name || expense.description} - {getCurrencySymbol(expense.currency)} {expense.amount.toLocaleString('id-ID')}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Showing {expenses.filter(exp => exp.currency === recordingLine.currency).length} expenses in {recordingLine.currency}
+                      </p>
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    >
+                      Link to Expense
+                    </button>
+                  </form>
+                )}
               </div>
             )}
 
