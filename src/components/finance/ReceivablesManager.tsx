@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { DataTable } from '../DataTable';
 import { Modal } from '../Modal';
-import { TrendingUp, Plus } from 'lucide-react';
+import { TrendingUp, RefreshCw } from 'lucide-react';
 import { useNavigation } from '../../contexts/NavigationContext';
 
 interface SalesInvoice {
@@ -34,6 +34,7 @@ interface BankAccount {
   id: string;
   account_name: string;
   bank_name: string;
+  alias: string | null;
 }
 
 export function ReceivablesManager({ canManage }: { canManage: boolean }) {
@@ -43,6 +44,7 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
   const [payments, setPayments] = useState<CustomerPayment[]>([]);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<SalesInvoice | null>(null);
   const [customerInvoices, setCustomerInvoices] = useState<SalesInvoice[]>([]);
@@ -57,11 +59,7 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
     notes: '',
   });
 
-  useEffect(() => {
-    loadData();
-  }, [view]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [invoicesRes, paymentsRes, banksRes] = await Promise.all([
         supabase
@@ -76,7 +74,7 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
           .limit(50),
         supabase
           .from('bank_accounts')
-          .select('id, account_name, bank_name')
+          .select('id, account_name, bank_name, alias')
           .eq('is_active', true)
           .order('account_name'),
       ]);
@@ -99,7 +97,20 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(loadData, 30000);
+    return () => clearInterval(interval);
+  }, [loadData]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadData();
   };
 
   const handleRecordPayment = async (invoice: SalesInvoice) => {
@@ -163,41 +174,62 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // 1. Insert payment record
-      const { data: payment, error: paymentError } = await supabase
-        .from('customer_payments')
+      // 1. Generate voucher number
+      const year = new Date().getFullYear().toString().slice(-2);
+      const month = (new Date().getMonth() + 1).toString().padStart(2, '0');
+      const { count } = await supabase
+        .from('receipt_vouchers')
+        .select('*', { count: 'exact', head: true })
+        .like('voucher_number', `RV${year}${month}%`);
+
+      const voucherNumber = `RV${year}${month}-${String((count || 0) + 1).padStart(4, '0')}`;
+
+      // 2. Insert receipt voucher
+      const { data: voucher, error: voucherError } = await supabase
+        .from('receipt_vouchers')
         .insert([{
-          payment_number: formData.payment_number,
+          voucher_number: voucherNumber,
+          voucher_date: formData.payment_date,
           customer_id: selectedInvoice.customer_id,
-          invoice_id: null,
-          payment_date: formData.payment_date,
-          amount: formData.amount,
           payment_method: formData.payment_method,
           bank_account_id: formData.bank_account_id || null,
           reference_number: formData.reference_number || null,
-          notes: formData.notes || null,
+          amount: formData.amount,
+          description: formData.notes || null,
           created_by: user.id,
         }])
         .select()
         .single();
 
-      if (paymentError) throw paymentError;
+      if (voucherError) throw voucherError;
 
-      // 2. Insert allocation records
-      const allocations = Object.entries(selectedAllocations)
-        .filter(([_, amount]) => amount > 0)
-        .map(([invoiceId, amount]) => ({
+      // 3. Insert invoice payment allocations and update payment status
+      for (const [invoiceId, amount] of Object.entries(selectedAllocations)) {
+        if (amount <= 0) continue;
+
+        // Create allocation in invoice_payment_allocations table
+        await supabase.from('invoice_payment_allocations').insert({
           invoice_id: invoiceId,
-          payment_id: payment.id,
+          payment_id: voucher.id,
           allocated_amount: amount,
           created_by: user.id,
-        }));
+        });
 
-      const { error: allocError } = await supabase
-        .from('invoice_payment_allocations')
-        .insert(allocations);
+        // Update invoice payment status based on total paid
+        const invoice = customerInvoices.find(inv => inv.id === invoiceId);
+        if (invoice) {
+          const newPaidAmount = (invoice.paid_amount || 0) + amount;
+          const newBalance = invoice.total_amount - newPaidAmount;
+          const newStatus = newBalance <= 0.01 ? 'paid' : (newPaidAmount > 0 ? 'partial' : 'pending');
 
-      if (allocError) throw allocError;
+          await supabase
+            .from('sales_invoices')
+            .update({
+              payment_status: newStatus,
+            })
+            .eq('id', invoiceId);
+        }
+      }
 
       setModalOpen(false);
       setSelectedInvoice(null);
@@ -205,7 +237,7 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
       setSelectedAllocations({});
       resetForm();
       loadData();
-      alert('Payment recorded and allocated successfully!');
+      alert(`Receipt voucher ${voucherNumber} created and allocated successfully!`);
     } catch (error: any) {
       console.error('Error recording payment:', error);
       alert(`Failed to record payment: ${error.message}`);
@@ -366,7 +398,32 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
             Payment History
           </button>
         </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+          title="Refresh data"
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          <span className="text-sm">Refresh</span>
+        </button>
       </div>
+
+      {/* Help Banner */}
+      {view === 'invoices' && invoices.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+          <div className="bg-blue-100 rounded-full p-2">
+            <TrendingUp className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <p className="font-medium text-blue-900">Recording Customer Payments</p>
+            <p className="text-sm text-blue-700 mt-1">
+              Click the green <span className="font-semibold">"Record Payment"</span> button next to any invoice to record payment received from customers.
+              The invoice status will automatically change from "pending" to "paid" once full payment is allocated.
+            </p>
+          </div>
+        </div>
+      )}
 
       {view === 'invoices' ? (
         <>
@@ -374,7 +431,7 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
             <div className="text-center py-12 text-gray-500">
               <TrendingUp className="w-16 h-16 mx-auto mb-4 text-gray-400" />
               <p className="text-lg font-medium">All Caught Up!</p>
-              <p className="text-sm mt-2">No outstanding invoices</p>
+              <p className="text-sm mt-2">No outstanding invoices - all payments received!</p>
             </div>
           ) : (
             <DataTable
@@ -384,8 +441,9 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
               actions={canManage ? (invoice) => (
                 <button
                   onClick={() => handleRecordPayment(invoice)}
-                  className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition shadow-sm"
                 >
+                  <span className="text-lg">+</span>
                   Record Payment
                 </button>
               ) : undefined}
@@ -410,7 +468,7 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
           resetForm();
         }}
         title="Record Customer Payment"
-        maxWidth="max-w-4xl"
+        size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           {selectedInvoice && (
@@ -485,7 +543,7 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
                   <option value="">Select Bank Account</option>
                   {bankAccounts.map((bank) => (
                     <option key={bank.id} value={bank.id}>
-                      {bank.account_name} - {bank.bank_name}
+                      {bank.alias || `${bank.account_name} - ${bank.bank_name}`}
                     </option>
                   ))}
                 </select>

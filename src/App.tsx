@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
 import { Login } from './components/Login';
+import { ToastContainer } from './components/ToastNotification';
 import { Dashboard } from './pages/Dashboard';
 import { Products } from './pages/Products';
 import { Customers } from './pages/Customers';
@@ -20,8 +21,10 @@ import { Setup } from './pages/Setup';
 import { GmailCallback } from './pages/GmailCallback';
 import SalesOrders from './pages/SalesOrders';
 import ImportRequirements from './pages/ImportRequirements';
+import ImportContainers from './pages/ImportContainers';
 import MaterialReturns from './pages/MaterialReturns';
 import { CreditNotes } from './pages/CreditNotes';
+import PurchaseOrders from './pages/PurchaseOrders';
 import { ApprovalNotifications } from './components/ApprovalNotifications';
 import { initializeNotificationChecks } from './utils/notifications';
 
@@ -30,9 +33,17 @@ function AppContent() {
   const { currentPage } = useNavigation();
 
   useEffect(() => {
+    let cleanup: (() => void) | undefined;
+
     if (user && profile) {
-      initializeNotificationChecks();
+      const intervalId = setTimeout(() => {
+        initializeNotificationChecks();
+      }, 2000);
+
+      cleanup = () => clearTimeout(intervalId);
     }
+
+    return cleanup;
   }, [user, profile]);
 
   if (window.location.pathname === '/setup') {
@@ -74,8 +85,12 @@ function AppContent() {
         return <Customers />;
       case 'sales-orders':
         return <SalesOrders />;
+      case 'purchase-orders':
+        return <PurchaseOrders />;
       case 'import-requirements':
         return <ImportRequirements />;
+      case 'import-containers':
+        return <ImportContainers />;
       case 'crm':
         return <CRM />;
       case 'command-center':
@@ -103,6 +118,7 @@ function AppContent() {
     <>
       {renderPage()}
       <ApprovalNotifications />
+      <ToastContainer />
     </>
   );
 }

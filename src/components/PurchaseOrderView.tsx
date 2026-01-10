@@ -4,65 +4,62 @@ import { useLanguage } from '../contexts/LanguageContext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-interface SalesOrderItem {
+interface POItem {
   id?: string;
   product_id: string;
   quantity: number;
+  unit: string;
   unit_price: number;
   discount_percent: number;
-  discount_amount: number;
-  tax_percent: number;
-  tax_amount: number;
   line_total: number;
+  coa_code?: string;
+  specification?: string;
   products?: {
     product_name: string;
     product_code: string;
-    unit: string;
   };
 }
 
-interface ProformaInvoiceViewProps {
-  salesOrder: {
+interface PurchaseOrderViewProps {
+  purchaseOrder: {
     id: string;
-    so_number: string;
-    customer_id: string;
-    customer_po_number: string;
-    customer_po_date: string;
-    so_date: string;
-    expected_delivery_date: string | null;
-    subtotal_amount: number;
+    po_number: string;
+    po_date: string;
+    supplier_id: string;
+    expected_delivery_date?: string;
+    delivery_address?: string;
+    currency: string;
+    subtotal: number;
     tax_amount: number;
     total_amount: number;
-    notes: string | null;
-    currency?: string;
-    customers?: {
+    payment_terms?: string;
+    notes?: string;
+    terms_conditions?: string;
+    status: string;
+    suppliers?: {
       company_name: string;
-      address: string;
-      city: string;
-      phone: string;
-      npwp: string;
-      pharmacy_license: string;
-      gst_vat_type: string;
+      contact_person?: string;
+      phone?: string;
+      email?: string;
+      address?: string;
+      city?: string;
+      npwp?: string;
     };
   };
-  items: SalesOrderItem[];
+  items: POItem[];
   onClose: () => void;
 }
 
-export function ProformaInvoiceView({ salesOrder, items, onClose }: ProformaInvoiceViewProps) {
+export function PurchaseOrderView({ purchaseOrder: po, items, onClose }: PurchaseOrderViewProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const { t, language } = useLanguage();
 
-  const currency = salesOrder.currency || 'IDR';
-  const currencySymbol = currency === 'IDR' ? 'Rp' : currency === 'USD' ? '$' : currency;
-
   const formatCurrency = (amount: number | undefined | null) => {
-    if (amount === undefined || amount === null) return `${currencySymbol} 0,00`;
-    if (currency === 'IDR') {
-      // Always show 2 decimal places in Indonesian format (136.125.000,00)
-      return `${amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (amount === undefined || amount === null) return po.currency === 'USD' ? '$ 0.00' : 'Rp 0';
+    if (po.currency === 'USD') {
+      return `$ ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
-    return `${currencySymbol} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `Rp ${amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -179,17 +176,9 @@ export function ProformaInvoiceView({ salesOrder, items, onClose }: ProformaInvo
         allowTaint: true,
         logging: false,
         backgroundColor: '#ffffff',
-        windowWidth: printRef.current.scrollWidth,
-        windowHeight: printRef.current.scrollHeight,
-        onclone: (clonedDoc) => {
-          const clonedElement = clonedDoc.getElementById('proforma-print-content');
-          if (clonedElement) {
-            clonedElement.style.width = '210mm';
-          }
-        }
       });
 
-      const imgData = canvas.toDataURL('image/png', 1.0);
+      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -216,23 +205,23 @@ export function ProformaInvoiceView({ salesOrder, items, onClose }: ProformaInvo
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, scaledHeight);
       }
 
-      pdf.save(`Proforma-Invoice-${salesOrder.so_number}.pdf`);
+      pdf.save(`PO-${po.po_number}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Failed to generate PDF. Please try again.');
     }
   };
 
-  const customer = salesOrder.customers;
-  const hasAnyDiscount = items.some(item => (item.discount_amount || 0) > 0);
+  const supplier = po.suppliers;
+  const currencyLabel = po.currency === 'USD' ? 'USD' : 'IDR';
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-75 print:static print:bg-white print:overflow-visible">
       <div className="flex min-h-screen items-start justify-center p-4 pt-10 print:p-0 print:min-h-0 print:block">
         <div className="relative w-full max-w-5xl bg-white shadow-xl print:shadow-none print:max-w-full">
-          <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4" style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4 print:hidden">
             <h2 className="text-xl font-bold text-gray-900">
-              {language === 'id' ? 'Faktur Proforma' : 'Proforma Invoice'} {salesOrder.so_number}
+              Purchase Order {po.po_number}
             </h2>
             <div className="flex gap-2">
               <button
@@ -240,7 +229,7 @@ export function ProformaInvoiceView({ salesOrder, items, onClose }: ProformaInvo
                 className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
               >
                 <Printer className="h-4 w-4" />
-                {language === 'id' ? 'Cetak' : 'Print'}
+                Print
               </button>
               <button
                 onClick={handleDownloadPDF}
@@ -258,11 +247,11 @@ export function ProformaInvoiceView({ salesOrder, items, onClose }: ProformaInvo
             </div>
           </div>
 
-          <div id="proforma-print-content" ref={printRef} className="p-8">
+          <div id="po-print-content" ref={printRef} className="p-8">
             <div className="mb-3 border-2 border-black p-3 print:mb-2 print:p-2">
               <div className="mb-2 flex items-start justify-between">
                 <div className="flex items-start gap-3">
-                  <div className="h-16 w-16 flex items-center justify-center print:h-12 print:w-12" style={{backgroundColor: '#fff'}}>
+                  <div className="h-16 w-16 flex items-center justify-center print:h-12 print:w-12">
                     <svg xmlns="http://www.w3.org/2000/svg" xmlSpace="preserve" width="100%" height="100%" viewBox="0 0 15686.55 15480.24" style={{shapeRendering: 'geometricPrecision', fillRule: 'evenodd', clipRule: 'evenodd'}}>
                       <g>
                         <path fill="#FDB763" d="M69.94 10438.12l10353.39 0 0 -1798.67 1665.92 0 0 1868.6 0 320.44 0 4552.28c0,38.48 -31.45,69.94 -69.94,69.94l-11949.38 0c-38.48,0 -69.94,-31.45 -69.94,-69.94l0 -4872.72c0,-38.48 31.45,-69.94 69.94,-69.94zm1605.9 1710.15l8737.57 0c13.58,0 24.68,11.11 24.68,24.68l0 1719.84c0,13.58 -11.11,24.68 -24.68,24.68l-8737.57 0c-13.58,0 -24.68,-11.11 -24.68,-24.68l0 -1719.84c0,-13.58 11.11,-24.68 24.68,-24.68z"/>
@@ -280,7 +269,7 @@ export function ProformaInvoiceView({ salesOrder, items, onClose }: ProformaInvo
                 </div>
 
                 <div className="text-right">
-                  <h2 className="text-3xl font-bold print:text-2xl">{language === 'id' ? 'FAKTUR PROFORMA' : 'PROFORMA INVOICE'}</h2>
+                  <h2 className="text-3xl font-bold print:text-2xl">PURCHASE ORDER</h2>
                 </div>
               </div>
 
@@ -300,50 +289,44 @@ export function ProformaInvoiceView({ salesOrder, items, onClose }: ProformaInvo
               <div className="flex justify-between">
                 <div className="space-y-1 text-xs print:text-[10px] print:space-y-0 flex-1">
                   <div>
-                    <span className="font-bold">{language === 'id' ? 'Company Name:' : 'Company Name:'}</span>
-                    <span className="font-semibold"> {customer?.company_name || ''}</span>
+                    <span className="font-bold">Supplier:</span>
+                    <span className="font-semibold"> {supplier?.company_name || ''}</span>
                   </div>
 
                   <div className="pt-1 flex">
-                    <span className="font-bold" style={{minWidth: '72px'}}>{language === 'id' ? 'Address:' : 'Address:'}</span>
+                    <span className="font-bold" style={{minWidth: '72px'}}>Address:</span>
                     <div>
-                      <p>{customer?.address || ''}</p>
-                      <p>{customer?.city || ''}</p>
+                      <p>{supplier?.address || ''}</p>
+                      <p>{supplier?.city || ''}</p>
                     </div>
                   </div>
                   <div className="flex pt-1">
-                    <span className="font-bold" style={{minWidth: '72px'}}>{language === 'id' ? 'Phone:' : 'Phone:'}</span>
-                    <span>{customer?.phone || ''}</span>
+                    <span className="font-bold" style={{minWidth: '72px'}}>Phone:</span>
+                    <span>{supplier?.phone || ''}</span>
                   </div>
                   <div className="flex">
-                    <span className="font-bold" style={{minWidth: '72px'}}>NPWP:</span>
-                    <span>{customer?.npwp || ''}</span>
+                    <span className="font-bold" style={{minWidth: '72px'}}>Contact:</span>
+                    <span>{supplier?.contact_person || ''}</span>
                   </div>
                 </div>
 
-                <div className="space-y-1 text-xs print:text-[10px] print:space-y-0 text-right" style={{minWidth: '220px'}}>
+                <div className="space-y-1 text-xs print:text-[10px] print:space-y-0 text-right" style={{minWidth: '200px'}}>
                   <div>
-                    <span className="font-bold">{language === 'id' ? 'SO Number:' : 'SO Number:'}</span>
-                    <span className="ml-2">{salesOrder.so_number}</span>
+                    <span className="font-bold">PO No:</span>
+                    <span className="ml-2">{po.po_number}</span>
                   </div>
                   <div>
-                    <span className="font-bold">{language === 'id' ? 'SO Date:' : 'SO Date:'}</span>
-                    <span className="ml-2">{formatDate(salesOrder.so_date)}</span>
+                    <span className="font-bold">PO Date:</span>
+                    <span className="ml-2">{formatDate(po.po_date)}</span>
                   </div>
                   <div className="pt-1">
-                    <span className="font-bold">Customer PO No:</span>
-                    <span className="ml-2">{salesOrder.customer_po_number}</span>
+                    <span className="font-bold">Expected Delivery:</span>
+                    <span className="ml-2">{po.expected_delivery_date ? formatDate(po.expected_delivery_date) : 'N/A'}</span>
                   </div>
                   <div>
-                    <span className="font-bold">Customer PO Date:</span>
-                    <span className="ml-2">{formatDate(salesOrder.customer_po_date)}</span>
+                    <span className="font-bold">Payment Terms:</span>
+                    <span className="ml-2">{po.payment_terms || 'N/A'}</span>
                   </div>
-                  {salesOrder.expected_delivery_date && (
-                    <div>
-                      <span className="font-bold">{language === 'id' ? 'Expected Delivery:' : 'Expected Delivery:'}</span>
-                      <span className="ml-2">{formatDate(salesOrder.expected_delivery_date)}</span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -353,37 +336,30 @@ export function ProformaInvoiceView({ salesOrder, items, onClose }: ProformaInvo
                 <thead>
                   <tr className="border-b-2 border-black bg-white">
                     <th className="border-r border-black p-1.5 text-center font-bold print:p-1">No.</th>
-                    <th className="border-r border-black p-1.5 text-left font-bold print:p-1">{language === 'id' ? 'Product Name' : 'Product Name'}</th>
-                    <th className="border-r border-black p-1.5 text-center font-bold print:p-1">{language === 'id' ? 'Total Qty' : 'Total Qty'}</th>
+                    <th className="border-r border-black p-1.5 text-left font-bold print:p-1">Product Name</th>
+                    <th className="border-r border-black p-1.5 text-left font-bold print:p-1">Specification</th>
+                    <th className="border-r border-black p-1.5 text-center font-bold print:p-1">COA No.</th>
+                    <th className="border-r border-black p-1.5 text-center font-bold print:p-1">Quantity</th>
                     <th className="border-r border-black p-1.5 text-center font-bold print:p-1">UOM</th>
-                    <th className={`border-r border-black p-1.5 text-right font-bold print:p-1 ${!hasAnyDiscount ? '' : ''}`}>{language === 'id' ? `Unit Price (${currency})` : `Unit Price (${currency})`}</th>
-                    {hasAnyDiscount && (
-                      <th className="border-r border-black p-1.5 text-right font-bold print:p-1">{language === 'id' ? 'Discount' : 'Discount'}</th>
-                    )}
-                    <th className="p-1.5 text-right font-bold print:p-1">{language === 'id' ? `Sub Total (${currency})` : `Sub Total (${currency})`}</th>
+                    <th className="border-r border-black p-1.5 text-right font-bold print:p-1">Unit Price ({currencyLabel})</th>
+                    <th className="border-r border-black p-1.5 text-center font-bold print:p-1">Disc%</th>
+                    <th className="p-1.5 text-right font-bold print:p-1">Sub Total ({currencyLabel})</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item, index) => {
-                    const quantity = item.quantity || 0;
-                    const unitPrice = item.unit_price || 0;
-                    const discountAmount = item.discount_amount || 0;
-                    const itemSubtotal = (quantity * unitPrice) - discountAmount;
-
-                    return (
-                      <tr key={item.id || index} className="border-b border-black">
-                        <td className="border-r border-black p-1.5 text-center print:p-1">{index + 1}</td>
-                        <td className="border-r border-black p-1.5 print:p-1">{item.products?.product_name || 'Unknown Product'}</td>
-                        <td className="border-r border-black p-1.5 text-center print:p-1">{quantity.toLocaleString()}</td>
-                        <td className="border-r border-black p-1.5 text-center print:p-1">{item.products?.unit || 'Kg'}</td>
-                        <td className={`border-r border-black p-1.5 text-right print:p-1 ${!hasAnyDiscount ? '' : ''}`}>{formatCurrency(unitPrice)}</td>
-                        {hasAnyDiscount && (
-                          <td className="border-r border-black p-1.5 text-right print:p-1">{formatCurrency(discountAmount)}</td>
-                        )}
-                        <td className="p-1.5 text-right print:p-1">{formatCurrency(itemSubtotal)}</td>
-                      </tr>
-                    );
-                  })}
+                  {items.map((item, index) => (
+                    <tr key={item.id || index} className="border-b border-black">
+                      <td className="border-r border-black p-1.5 text-center print:p-1">{index + 1}</td>
+                      <td className="border-r border-black p-1.5 print:p-1">{item.products?.product_name || 'Unknown Product'}</td>
+                      <td className="border-r border-black p-1.5 print:p-1">{item.specification || '-'}</td>
+                      <td className="border-r border-black p-1.5 text-center print:p-1">{item.coa_code || '-'}</td>
+                      <td className="border-r border-black p-1.5 text-center print:p-1">{item.quantity.toLocaleString()}</td>
+                      <td className="border-r border-black p-1.5 text-center print:p-1">{item.unit}</td>
+                      <td className="border-r border-black p-1.5 text-right print:p-1">{formatCurrency(item.unit_price)}</td>
+                      <td className="border-r border-black p-1.5 text-center print:p-1">{item.discount_percent}%</td>
+                      <td className="p-1.5 text-right print:p-1">{formatCurrency(item.line_total)}</td>
+                    </tr>
+                  ))}
 
                   {items.length < 2 && Array.from({ length: 2 - items.length }).map((_, i) => (
                     <tr key={`empty-${i}`} className="border-b border-black">
@@ -392,9 +368,9 @@ export function ProformaInvoiceView({ salesOrder, items, onClose }: ProformaInvo
                       <td className="border-r border-black p-1.5 print:p-1">&nbsp;</td>
                       <td className="border-r border-black p-1.5 print:p-1">&nbsp;</td>
                       <td className="border-r border-black p-1.5 print:p-1">&nbsp;</td>
-                      {hasAnyDiscount && (
-                        <td className="border-r border-black p-1.5 print:p-1">&nbsp;</td>
-                      )}
+                      <td className="border-r border-black p-1.5 print:p-1">&nbsp;</td>
+                      <td className="border-r border-black p-1.5 print:p-1">&nbsp;</td>
+                      <td className="border-r border-black p-1.5 print:p-1">&nbsp;</td>
                       <td className="p-1.5 print:p-1">&nbsp;</td>
                     </tr>
                   ))}
@@ -405,79 +381,54 @@ export function ProformaInvoiceView({ salesOrder, items, onClose }: ProformaInvo
             <div className="border-2 border-black border-t-0">
               <div className="flex items-stretch border-b-2 border-black">
                 <div className="flex-1 p-2 border-r-2 border-black print:p-1.5">
-                  <p className="text-xs font-bold print:text-[10px]">{language === 'id' ? 'Amount In words:' : 'Amount in words:'}</p>
+                  <p className="text-xs font-bold print:text-[10px]">Amount in words:</p>
                   <p className="text-xs mt-0.5 font-bold uppercase print:text-[10px] print:mt-0">
-                    {currency} {numberToWords(Math.round(salesOrder.total_amount))} {currency === 'IDR' ? 'RUPIAH' : currency === 'USD' ? 'DOLLARS' : ''}
+                    {currencyLabel} {numberToWords(Math.round(po.total_amount))} {po.currency === 'USD' ? 'DOLLARS' : 'RUPIAH'}
                   </p>
                 </div>
 
                 <div className="w-80 text-xs p-2 print:text-[10px] print:p-1.5">
-                  <div className="flex justify-between py-1 print:py-0.5">
-                    <span className="font-bold">{language === 'id' ? 'Sub Total' : 'Sub Total'}</span>
-                    <span className="font-bold">{formatCurrency(salesOrder.subtotal_amount)}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-black py-1 print:py-0.5">
-                    <span className="font-bold">VAT (PPN) 11%</span>
-                    <span className="font-bold">{formatCurrency(salesOrder.tax_amount)}</span>
-                  </div>
                   <div className="flex justify-between border-t-2 border-black py-1 print:py-0.5">
-                    <span className="font-bold">{language === 'id' ? 'Grand Total' : 'Grand Total'}</span>
-                    <span className="font-bold text-sm print:text-xs">{formatCurrency(salesOrder.total_amount)}</span>
+                    <span className="font-bold">Total Amount</span>
+                    <span className="font-bold text-sm print:text-xs">{formatCurrency(po.total_amount)}</span>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-0 text-xs print:text-[10px]">
                 <div className="p-3 border-r-2 border-black print:p-2">
-                  <p className="font-semibold mb-2 print:mb-1">{language === 'id' ? 'Bank Details:' : 'Bank Details:'}</p>
-                  <div className="space-y-0.5 print:space-y-0">
-                    <div className="flex">
-                      <span className="font-semibold" style={{minWidth: '95px'}}>{language === 'id' ? 'Bank Name' : 'Bank Name'}</span>
-                      <span className="mr-2">:</span>
-                      <span>BCA</span>
-                    </div>
-                    <div className="flex">
-                      <span className="font-semibold" style={{minWidth: '95px'}}>{language === 'id' ? 'Branch' : 'Branch'}</span>
-                      <span className="mr-2">:</span>
-                      <span>Sunter Mall, Jakarta</span>
-                    </div>
-                    <div className="flex">
-                      <span className="font-semibold" style={{minWidth: '95px'}}>{language === 'id' ? 'Account Name' : 'Account Name'}</span>
-                      <span className="mr-2">:</span>
-                      <span className="whitespace-nowrap">PT. Shubham Anzen Pharma Jaya</span>
-                    </div>
-                    <div className="flex">
-                      <span className="font-semibold" style={{minWidth: '95px'}}>{language === 'id' ? 'Account No.' : 'Account No.'}</span>
-                      <span className="mr-2">:</span>
-                      <span>0930 2010 14 (IDR)</span>
-                    </div>
-                  </div>
+                  <p className="font-semibold mb-1">Delivery Address:</p>
+                  <p className="whitespace-pre-line">{po.delivery_address || 'Same as company address'}</p>
                 </div>
 
                 <div className="p-3 print:p-2">
-                  <p className="font-semibold mb-1">{language === 'id' ? 'Authorized Signatory:' : 'Authorized Signatory:'}</p>
+                  <p className="font-semibold mb-1">Authorized By:</p>
                   <p className="font-semibold mb-10 print:mb-8">PT. SHUBHAM ANZEN PHARMA JAYA</p>
-                  <div className="w-4/5 border-t border-black pt-1">{language === 'id' ? 'Pharmacist' : 'Pharmacist'}</div>
+                  <div className="w-4/5 border-t border-black pt-1">Authorized Signatory</div>
                 </div>
               </div>
             </div>
 
-            {salesOrder.notes && (
-              <div className="border-2 border-black border-t-0 p-2 print:p-1.5">
-                <p className="text-xs print:text-[10px]">
-                  <span className="font-bold">{language === 'id' ? 'Notes: ' : 'Notes: '}</span>
-                  <span>{salesOrder.notes}</span>
-                </p>
+            {(po.notes || po.terms_conditions) && (
+              <div className="mt-3 border-2 border-black p-2 print:mt-2 print:p-1.5">
+                {po.notes && (
+                  <div className="mb-2">
+                    <p className="text-xs print:text-[10px]">
+                      <span className="font-bold">Notes: </span>
+                      <span>{po.notes}</span>
+                    </p>
+                  </div>
+                )}
+                {po.terms_conditions && (
+                  <div>
+                    <p className="text-xs print:text-[10px]">
+                      <span className="font-bold">Terms & Conditions: </span>
+                      <span>{po.terms_conditions}</span>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
-
-            <div className="border-2 border-black border-t-0 p-2.5 print:p-2">
-              <p className="text-xs font-semibold text-center print:text-[10px]">
-                {language === 'id'
-                  ? 'Ini adalah Faktur Proforma dan bukan tagihan resmi. Faktur resmi akan diterbitkan setelah pengiriman barang.'
-                  : 'This is a Proforma Invoice and not an official bill. Official invoice will be issued after delivery of goods.'}
-              </p>
-            </div>
           </div>
         </div>
       </div>
@@ -489,7 +440,7 @@ export function ProformaInvoiceView({ salesOrder, items, onClose }: ProformaInvo
             margin: 8mm;
           }
 
-          .sticky {
+          .print\\:hidden {
             display: none !important;
           }
 
@@ -502,39 +453,16 @@ export function ProformaInvoiceView({ salesOrder, items, onClose }: ProformaInvo
             visibility: hidden;
           }
 
-          #proforma-print-content,
-          #proforma-print-content * {
+          #po-print-content,
+          #po-print-content * {
             visibility: visible;
           }
 
-          #proforma-print-content {
+          #po-print-content {
             position: absolute;
             left: 0;
             top: 0;
             width: 100%;
-            page-break-inside: avoid;
-            page-break-after: auto;
-          }
-
-          #proforma-print-content > div {
-            page-break-inside: avoid;
-          }
-
-          table {
-            page-break-inside: auto;
-          }
-
-          tr {
-            page-break-inside: avoid;
-            page-break-after: auto;
-          }
-
-          thead {
-            display: table-header-group;
-          }
-
-          tfoot {
-            display: table-footer-group;
           }
         }
       `}</style>
