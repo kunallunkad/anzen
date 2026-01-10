@@ -39,6 +39,7 @@ export function NotificationDropdown() {
         .from('notifications')
         .select('*')
         .eq('user_id', user?.id)
+        .eq('is_read', false)
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -46,7 +47,7 @@ export function NotificationDropdown() {
 
       const newNotifications = data || [];
       setNotifications(newNotifications);
-      setUnreadCount(newNotifications.filter(n => !n.is_read).length || 0);
+      setUnreadCount(newNotifications.length || 0);
 
       if (showToasts) {
         sessionStorage.setItem(sessionKey, 'true');
