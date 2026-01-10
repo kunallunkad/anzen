@@ -77,6 +77,7 @@ export function CRM() {
   const { profile } = useAuth();
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'table' | 'pipeline' | 'calendar' | 'email' | 'customers' | 'activities' | 'appointments' | 'archive'>('table');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingInquiry, setEditingInquiry] = useState<Inquiry | null>(null);
@@ -97,17 +98,18 @@ export function CRM() {
 
   const loadInquiries = async () => {
     try {
+      setError(null);
       // Exclude 'lost' status inquiries from default view (they appear in Archive)
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('crm_inquiries')
-        .select('*, user_profiles!crm_inquiries_assigned_to_fkey(full_name)')
+        .select('*, user_profiles!assigned_to(full_name)')
         .neq('pipeline_status', 'lost')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
       setInquiries(data || []);
-    } catch (error) {
-      console.error('Error loading inquiries:', error);
+    } catch (err) {
+      setError('Failed to load inquiries. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -540,6 +542,18 @@ export function CRM() {
           </div>
 
           <div className="p-6">
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 flex items-center justify-between">
+                <p className="text-red-700">{error}</p>
+                <button
+                  onClick={loadInquiries}
+                  className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+            
             {activeTab === 'email' && (
               <GmailBrowserInbox />
             )}

@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Layout } from '../components/Layout';
-import { FileText, Plus, Search, Filter, Eye, Edit, Trash2, XCircle, FileCheck, CheckCircle, Paperclip, Download, ExternalLink, FileOutput } from 'lucide-react';
+import { FileText, Plus, Search, Filter, Eye, Edit, Trash2, XCircle, FileCheck, CheckCircle, Paperclip, Download, ExternalLink } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import SalesOrderForm from '../components/SalesOrderForm';
 import { ProformaInvoiceView } from '../components/ProformaInvoiceView';
@@ -72,8 +72,6 @@ export default function SalesOrders() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null);
   const [editingOrder, setEditingOrder] = useState<SalesOrder | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -335,8 +333,8 @@ export default function SalesOrders() {
   };
 
   const handleViewOrder = (order: SalesOrder) => {
-    setSelectedOrder(order);
-    setShowViewModal(true);
+    setProformaOrder(order);
+    setShowProformaModal(true);
   };
 
   const handleEditOrder = (order: SalesOrder) => {
@@ -640,19 +638,9 @@ export default function SalesOrders() {
                         <button
                           onClick={() => handleViewOrder(order)}
                           className="text-blue-600 hover:text-blue-800"
-                          title="View"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setProformaOrder(order);
-                            setShowProformaModal(true);
-                          }}
-                          className="text-purple-600 hover:text-purple-800"
                           title="View Proforma Invoice"
                         >
-                          <FileOutput className="w-4 h-4" />
+                          <Eye className="w-4 h-4" />
                         </button>
                         {!['delivered', 'closed', 'cancelled', 'partially_delivered', 'pending_delivery'].includes(order.status) && (
                           <button
@@ -743,108 +731,6 @@ export default function SalesOrders() {
               setEditingOrder(null);
             }}
           />
-        </Modal>
-      )}
-
-      {showViewModal && selectedOrder && (
-        <Modal
-          isOpen={showViewModal}
-          onClose={() => {
-            setShowViewModal(false);
-            setSelectedOrder(null);
-          }}
-          title={`Sales Order: ${selectedOrder.so_number}`}
-        >
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700">Customer</label>
-                <p className="text-sm text-gray-900">{selectedOrder.customers?.company_name}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Status</label>
-                <div className="mt-1">{getStatusBadge(selectedOrder.status)}</div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Customer PO Number</label>
-                <p className="text-sm text-gray-900">{selectedOrder.customer_po_number}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Customer PO Date</label>
-                <p className="text-sm text-gray-900">{new Date(selectedOrder.customer_po_date).toLocaleDateString()}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">SO Date</label>
-                <p className="text-sm text-gray-900">{new Date(selectedOrder.so_date).toLocaleDateString()}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Expected Delivery</label>
-                <p className="text-sm text-gray-900">
-                  {selectedOrder.expected_delivery_date ? new Date(selectedOrder.expected_delivery_date).toLocaleDateString() : 'Not specified'}
-                </p>
-              </div>
-            </div>
-
-            {selectedOrder.notes && (
-              <div>
-                <label className="text-sm font-medium text-gray-700">Notes</label>
-                <p className="text-sm text-gray-900 mt-1">{selectedOrder.notes}</p>
-              </div>
-            )}
-
-            {selectedOrder.customer_po_file_url && (
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Customer PO Attachment</label>
-                <a
-                  href={selectedOrder.customer_po_file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 hover:bg-blue-100 transition"
-                >
-                  <Paperclip className="w-4 h-4" />
-                  <span className="text-sm font-medium">View Customer PO</span>
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-              </div>
-            )}
-
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Items</label>
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left">Product</th>
-                    <th className="px-4 py-2 text-right">Qty</th>
-                    <th className="px-4 py-2 text-right">Price</th>
-                    <th className="px-4 py-2 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedOrder.sales_order_items?.map((item) => (
-                    <tr key={item.id} className="border-t">
-                      <td className="px-4 py-2">{item.products?.product_name}</td>
-                      <td className="px-4 py-2 text-right">{item.quantity}</td>
-                      <td className="px-4 py-2 text-right">{formatCurrency(item.unit_price, selectedOrder.currency || 'IDR')}</td>
-                      <td className="px-4 py-2 text-right">{formatCurrency(item.line_total, selectedOrder.currency || 'IDR')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-gray-50 font-medium">
-                  <tr>
-                    <td colSpan={3} className="px-4 py-2 text-right">Total:</td>
-                    <td className="px-4 py-2 text-right">{formatCurrency(selectedOrder.total_amount, selectedOrder.currency || 'IDR')}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            {selectedOrder.rejection_reason && (
-              <div className="bg-red-50 p-3 rounded">
-                <label className="text-sm font-medium text-red-700">Rejection Reason</label>
-                <p className="text-sm text-red-900 mt-1">{selectedOrder.rejection_reason}</p>
-              </div>
-            )}
-          </div>
         </Modal>
       )}
 

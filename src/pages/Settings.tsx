@@ -8,6 +8,7 @@ import { GmailSettings } from '../components/crm/GmailSettings';
 import { UserManagement } from '../components/settings/UserManagement';
 import { EmailTemplates } from '../components/settings/EmailTemplates';
 import { ExtractData } from '../components/settings/ExtractData';
+import { SuppliersManager } from '../components/settings/SuppliersManager';
 
 interface AppSettings {
   id: string;
@@ -43,7 +44,7 @@ interface UserProfile {
 export function Settings() {
   const { t } = useLanguage();
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<'company' | 'users' | 'system' | 'financial' | 'gmail' | 'templates' | 'extract'>('company');
+  const [activeTab, setActiveTab] = useState<'company' | 'users' | 'suppliers' | 'system' | 'financial' | 'gmail' | 'templates' | 'extract'>('company');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -225,6 +226,19 @@ export function Settings() {
                 </div>
               </button>
               <button
+                onClick={() => setActiveTab('suppliers')}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition ${
+                  activeTab === 'suppliers'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Package className="w-4 h-4" />
+                  Suppliers
+                </div>
+              </button>
+              <button
                 onClick={() => setActiveTab('financial')}
                 className={`px-6 py-3 text-sm font-medium border-b-2 transition ${
                   activeTab === 'financial'
@@ -303,6 +317,10 @@ export function Settings() {
 
             {activeTab === 'extract' && (
               <ExtractData />
+            )}
+
+            {activeTab === 'suppliers' && (
+              <SuppliersManager />
             )}
 
             {activeTab === 'company' && (

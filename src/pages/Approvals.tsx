@@ -59,8 +59,8 @@ export default function Approvals() {
         .from('approval_workflows')
         .select(`
           *,
-          requested_by_profile:user_profiles!approval_workflows_requested_by_fkey(full_name, email),
-          approved_by_profile:user_profiles!approval_workflows_approved_by_fkey(full_name)
+          requested_by_profile:user_profiles!requested_by(full_name, email),
+          approved_by_profile:user_profiles!approved_by(full_name)
         `)
         .order('created_at', { ascending: false });
 

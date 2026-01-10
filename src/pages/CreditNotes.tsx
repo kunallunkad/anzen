@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { DataTable } from '../components/DataTable';
 import { Modal } from '../components/Modal';
+import { CreditNoteView } from '../components/CreditNoteView';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Plus, Eye, Trash2, FileX, AlertCircle } from 'lucide-react';
+import { Plus, Eye, Trash2, FileX, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 
 interface CreditNote {
   id: string;
@@ -20,8 +21,15 @@ interface CreditNote {
   subtotal: number;
   tax_amount: number;
   total_amount: number;
+  status?: string;
+  approved_by?: string;
   customers?: {
     company_name: string;
+    address: string;
+    city: string;
+    phone: string;
+    npwp: string;
+    pharmacy_license: string;
   };
 }
 
@@ -73,6 +81,7 @@ export function CreditNotes() {
   const [modalOpen, setModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedCreditNote, setSelectedCreditNote] = useState<CreditNote | null>(null);
+  const [selectedCreditNoteItems, setSelectedCreditNoteItems] = useState<any[]>([]);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -117,7 +126,7 @@ export function CreditNotes() {
         .from('credit_notes')
         .select(`
           *,
-          customers(company_name)
+          customers(company_name, address, city, phone, npwp, pharmacy_license)
         `)
         .order('created_at', { ascending: false });
 
@@ -174,6 +183,26 @@ export function CreditNotes() {
     }
   };
 
+  const handleViewCreditNote = async (creditNote: CreditNote) => {
+    setSelectedCreditNote(creditNote);
+    try {
+      const { data, error } = await supabase
+        .from('credit_note_items')
+        .select(`
+          *,
+          products(product_name, product_code),
+          batches(batch_number)
+        `)
+        .eq('credit_note_id', creditNote.id);
+
+      if (error) throw error;
+      setSelectedCreditNoteItems(data || []);
+      setViewModalOpen(true);
+    } catch (error) {
+      console.error('Error loading credit note items:', error);
+    }
+  };
+
   const loadInvoicesForCustomer = async (customerId: string) => {
     try {
       const { data, error } = await supabase
@@ -198,13 +227,49 @@ export function CreditNotes() {
     }
   };
 
-  const handleInvoiceChange = (invoiceId: string) => {
+  const handleInvoiceChange = async (invoiceId: string) => {
     const invoice = invoices.find(inv => inv.id === invoiceId);
     setFormData({
       ...formData,
       original_invoice_id: invoiceId,
       original_invoice_number: invoice?.invoice_number || '',
     });
+
+    if (invoiceId) {
+      await loadInvoiceItems(invoiceId);
+    } else {
+      setItems([{ product_id: '', batch_id: '', quantity: 0, unit_price: 0 }]);
+    }
+  };
+
+  const loadInvoiceItems = async (invoiceId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('sales_invoice_items')
+        .select(`
+          product_id,
+          batch_id,
+          quantity,
+          unit_price,
+          products(product_name, product_code),
+          batches(batch_number, current_stock)
+        `)
+        .eq('invoice_id', invoiceId);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const invoiceItems = data.map(item => ({
+          product_id: item.product_id,
+          batch_id: item.batch_id || '',
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+        }));
+        setItems(invoiceItems);
+      }
+    } catch (error) {
+      console.error('Error loading invoice items:', error);
+    }
   };
 
   const addItem = () => {
@@ -231,7 +296,7 @@ export function CreditNotes() {
 
   const calculateTotals = () => {
     const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-    const tax_amount = 0;
+    const tax_amount = subtotal * 0.11;
     const total_amount = subtotal + tax_amount;
     return { subtotal, tax_amount, total_amount };
   };
@@ -286,6 +351,50 @@ export function CreditNotes() {
     }
   };
 
+  const handleApprove = async (id: string) => {
+    if (!confirm('Approve this credit note? Stock will be adjusted accordingly.')) return;
+
+    try {
+      const { error } = await supabase
+        .from('credit_notes')
+        .update({
+          status: 'approved',
+          approved_by: user?.id,
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      alert('Credit note approved successfully');
+      loadData();
+    } catch (error: any) {
+      console.error('Error approving credit note:', error);
+      alert(error.message || 'Failed to approve credit note');
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    const reason = prompt('Enter reason for rejection:');
+    if (!reason) return;
+
+    try {
+      const { error } = await supabase
+        .from('credit_notes')
+        .update({
+          status: 'rejected',
+          approved_by: user?.id,
+          notes: reason,
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      alert('Credit note rejected');
+      loadData();
+    } catch (error: any) {
+      console.error('Error rejecting credit note:', error);
+      alert(error.message || 'Failed to reject credit note');
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this credit note? This will reverse the stock adjustment.')) {
       return;
@@ -322,6 +431,7 @@ export function CreditNotes() {
   };
 
   const canManage = profile?.role === 'admin' || profile?.role === 'sales' || profile?.role === 'manager';
+  const isManager = profile?.role === 'admin' || profile?.role === 'manager';
 
   const columns = [
     {
@@ -348,6 +458,19 @@ export function CreditNotes() {
       key: 'total_amount',
       label: 'Amount',
       render: (cn: CreditNote) => `${cn.currency} ${cn.total_amount.toLocaleString('id-ID', { minimumFractionDigits: 2 })}`
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (cn: CreditNote) => (
+        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+          cn.status === 'approved' ? 'bg-green-100 text-green-800' :
+          cn.status === 'rejected' ? 'bg-red-100 text-red-800' :
+          'bg-yellow-100 text-yellow-800'
+        }`}>
+          {cn.status?.replace('_', ' ') || 'pending approval'}
+        </span>
+      )
     },
     {
       key: 'reason',
@@ -396,27 +519,46 @@ export function CreditNotes() {
           columns={columns}
           data={creditNotes}
           loading={loading}
-          actions={canManage ? (creditNote) => (
+          actions={(creditNote) => (
             <div className="flex items-center gap-2">
               <button
-                onClick={() => {
-                  setSelectedCreditNote(creditNote);
-                  setViewModalOpen(true);
-                }}
+                onClick={() => handleViewCreditNote(creditNote)}
                 className="p-1 text-blue-600 hover:bg-blue-50 rounded"
                 title="View Credit Note"
               >
                 <Eye className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => handleDelete(creditNote.id)}
-                className="p-1 text-red-600 hover:bg-red-50 rounded"
-                title="Delete Credit Note"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+
+              {isManager && (!creditNote.status || creditNote.status === 'pending_approval') && (
+                <>
+                  <button
+                    onClick={() => handleApprove(creditNote.id)}
+                    className="p-1 text-green-600 hover:bg-green-50 rounded"
+                    title="Approve Credit Note"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleReject(creditNote.id)}
+                    className="p-1 text-red-600 hover:bg-red-50 rounded"
+                    title="Reject Credit Note"
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+
+              {canManage && (!creditNote.status || creditNote.status === 'pending_approval') && (
+                <button
+                  onClick={() => handleDelete(creditNote.id)}
+                  className="p-1 text-red-600 hover:bg-red-50 rounded"
+                  title="Delete Credit Note"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
-          ) : undefined}
+          )}
         />
 
         <Modal
@@ -512,13 +654,15 @@ export function CreditNotes() {
             <div className="border-t pt-4">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-semibold text-gray-900">Items Being Credited</h4>
-                <button
-                  type="button"
-                  onClick={addItem}
-                  className="text-sm text-red-600 hover:text-red-700 font-medium"
-                >
-                  + Add Item
-                </button>
+                {!formData.original_invoice_id && (
+                  <button
+                    type="button"
+                    onClick={addItem}
+                    className="text-sm text-red-600 hover:text-red-700 font-medium"
+                  >
+                    + Add Item
+                  </button>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -530,7 +674,8 @@ export function CreditNotes() {
                           value={item.product_id}
                           onChange={(e) => updateItem(index, 'product_id', e.target.value)}
                           required
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
+                          disabled={!!formData.original_invoice_id}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg disabled:bg-gray-100"
                         >
                           <option value="">Select Product</option>
                           {products.map((product) => (
@@ -539,6 +684,11 @@ export function CreditNotes() {
                             </option>
                           ))}
                         </select>
+                        {item.product_id && products.find(p => p.id === item.product_id) && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {products.find(p => p.id === item.product_id)?.product_name}
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -546,7 +696,7 @@ export function CreditNotes() {
                           value={item.batch_id}
                           onChange={(e) => updateItem(index, 'batch_id', e.target.value)}
                           required
-                          disabled={!item.product_id}
+                          disabled={!item.product_id || !!formData.original_invoice_id}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg disabled:bg-gray-100"
                         >
                           <option value="">Select Batch</option>
@@ -561,10 +711,11 @@ export function CreditNotes() {
                       </div>
 
                       <div>
+                        <label className="block text-xs text-gray-600 mb-1">Quantity (Kg)</label>
                         <input
                           type="number"
                           step="0.001"
-                          placeholder="Quantity"
+                          placeholder="Quantity in Kg"
                           value={item.quantity || ''}
                           onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
                           required
@@ -574,10 +725,11 @@ export function CreditNotes() {
                       </div>
 
                       <div>
+                        <label className="block text-xs text-gray-600 mb-1">Unit Price (per Kg)</label>
                         <input
                           type="number"
                           step="0.01"
-                          placeholder="Unit Price"
+                          placeholder="Price per Kg"
                           value={item.unit_price || ''}
                           onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
                           required
@@ -651,6 +803,18 @@ export function CreditNotes() {
             </div>
           </form>
         </Modal>
+
+        {viewModalOpen && selectedCreditNote && (
+          <CreditNoteView
+            creditNote={selectedCreditNote}
+            items={selectedCreditNoteItems}
+            onClose={() => {
+              setViewModalOpen(false);
+              setSelectedCreditNote(null);
+              setSelectedCreditNoteItems([]);
+            }}
+          />
+        )}
       </div>
     </Layout>
   );

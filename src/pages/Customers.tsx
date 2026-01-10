@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { DataTable } from '../components/DataTable';
 import { Modal } from '../components/Modal';
+import { SearchableSelect } from '../components/SearchableSelect';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -319,20 +320,16 @@ export function Customers() {
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 {t('customers.city')}
               </label>
-              <select
+              <SearchableSelect
                 value={formData.city}
-                onChange={(e) =>
-                  setFormData({ ...formData, city: e.target.value })
-                }
-                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="">Select City</option>
-                {indonesiaCities.map((city) => (
-                  <option key={city} value={city}>
-                    {city}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => setFormData({ ...formData, city: value })}
+                options={[
+                  { value: '', label: 'Select City' },
+                  ...indonesiaCities.map(city => ({ value: city, label: city }))
+                ]}
+                placeholder="Select City"
+                className="text-sm"
+              />
             </div>
 
             <div>

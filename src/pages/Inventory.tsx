@@ -6,6 +6,8 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Plus, TrendingUp, TrendingDown, RefreshCw, RotateCcw, AlertTriangle, Package, CheckCircle, XCircle, Upload } from 'lucide-react';
+import MaterialReturns from './MaterialReturns';
+import StockRejections from './StockRejections';
 
 type TabType = 'transactions' | 'returns' | 'rejections';
 
@@ -93,6 +95,7 @@ export function Inventory() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'transaction' | 'return' | 'rejection'>('transaction');
 
@@ -130,119 +133,100 @@ export function Inventory() {
 
   const loadData = async () => {
     setLoading(true);
-    await loadProducts();
-    await loadBatches();
-    await loadCustomers();
+    setError(null);
+    try {
+      await loadProducts();
+      await loadBatches();
+      await loadCustomers();
 
-    if (activeTab === 'transactions') {
-      await loadTransactions();
-    } else if (activeTab === 'returns') {
-      await loadReturns();
-    } else if (activeTab === 'rejections') {
-      await loadRejections();
+      if (activeTab === 'transactions') {
+        await loadTransactions();
+      } else if (activeTab === 'returns') {
+        await loadReturns();
+      } else if (activeTab === 'rejections') {
+        await loadRejections();
+      }
+    } catch (err) {
+      setError('Failed to load inventory data. Please try again.');
     }
     setLoading(false);
   };
 
   const loadTransactions = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('inventory_transactions')
-        .select(`
-          *,
-          products(product_name, product_code),
-          batches(batch_number),
-          user_profiles(full_name)
-        `)
-        .order('transaction_date', { ascending: false })
-        .order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('inventory_transactions')
+      .select(`
+        *,
+        products(product_name, product_code),
+        batches(batch_number),
+        user_profiles(full_name)
+      `)
+      .order('transaction_date', { ascending: false })
+      .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setTransactions(data || []);
-    } catch (error) {
-      console.error('Error loading transactions:', error);
-    }
+    if (error) throw error;
+    setTransactions(data || []);
   };
 
   const loadReturns = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('material_returns')
-        .select(`
-          *,
-          customer:customers(company_name)
-        `)
-        .order('return_date', { ascending: false });
+    const { data, error } = await supabase
+      .from('material_returns')
+      .select(`
+        *,
+        customer:customers(company_name)
+      `)
+      .order('return_date', { ascending: false });
 
-      if (error) throw error;
-      setReturns(data || []);
-    } catch (error) {
-      console.error('Error loading returns:', error);
-    }
+    if (error) throw error;
+    setReturns(data || []);
   };
 
   const loadRejections = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('stock_rejections')
-        .select(`
-          *,
-          product:products(product_name, product_code),
-          batch:batches(batch_number)
-        `)
-        .order('rejection_date', { ascending: false });
+    const { data, error } = await supabase
+      .from('stock_rejections')
+      .select(`
+        *,
+        product:products(product_name, product_code),
+        batch:batches(batch_number)
+      `)
+      .order('rejection_date', { ascending: false });
 
-      if (error) throw error;
-      setRejections(data || []);
-    } catch (error) {
-      console.error('Error loading rejections:', error);
-    }
+    if (error) throw error;
+    setRejections(data || []);
   };
 
   const loadProducts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, product_name, product_code')
-        .eq('is_active', true)
-        .order('product_name');
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, product_name, product_code')
+      .eq('is_active', true)
+      .order('product_name');
 
-      if (error) throw error;
-      setProducts(data || []);
-    } catch (error) {
-      console.error('Error loading products:', error);
-    }
+    if (error) throw error;
+    setProducts(data || []);
   };
 
   const loadBatches = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('batches')
-        .select('id, batch_number, product_id, current_stock')
-        .eq('is_active', true)
-        .gt('current_stock', 0)
-        .order('import_date', { ascending: false });
+    const { data, error } = await supabase
+      .from('batches')
+      .select('id, batch_number, product_id, current_stock')
+      .eq('is_active', true)
+      .gt('current_stock', 0)
+      .order('import_date', { ascending: false });
 
-      if (error) throw error;
-      setBatches(data || []);
-    } catch (error) {
-      console.error('Error loading batches:', error);
-    }
+    if (error) throw error;
+    setBatches(data || []);
   };
 
   const loadCustomers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('id, company_name')
-        .eq('is_active', true)
-        .order('company_name');
+    const { data, error } = await supabase
+      .from('customers')
+      .select('id, company_name')
+      .eq('is_active', true)
+      .order('company_name');
 
-      if (error) throw error;
-      setCustomers(data || []);
-    } catch (error) {
-      console.error('Error loading customers:', error);
-    }
+    if (error) throw error;
+    setCustomers(data || []);
   };
 
   const handleTransactionSubmit = async (e: React.FormEvent) => {
@@ -252,35 +236,39 @@ export function Inventory() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { error: txError } = await supabase
-        .from('inventory_transactions')
-        .insert([{
-          ...formData,
-          batch_id: formData.batch_id || null,
-          reference_number: formData.reference_number || null,
-          notes: formData.notes || null,
-          created_by: user.id,
-        }]);
-
-      if (txError) throw txError;
-
+      // HARDENING FIX #2: Use atomic DB-side stock adjustment
+      // Prevents race conditions in concurrent updates
       if (formData.batch_id) {
-        const batch = batches.find(b => b.id === formData.batch_id);
-        if (batch) {
-          let newStock = batch.current_stock;
-          if (formData.transaction_type === 'purchase' || formData.transaction_type === 'adjustment') {
-            newStock += formData.quantity;
-          } else if (formData.transaction_type === 'sale') {
-            newStock -= formData.quantity;
-          }
-
-          const { error: batchError } = await supabase
-            .from('batches')
-            .update({ current_stock: newStock })
-            .eq('id', formData.batch_id);
-
-          if (batchError) throw batchError;
+        let quantityChange = formData.quantity;
+        if (formData.transaction_type === 'sale') {
+          quantityChange = -quantityChange;
         }
+        // For 'purchase' and 'adjustment', quantity is already positive
+
+        const { error: adjustError } = await supabase
+          .rpc('adjust_batch_stock_atomic', {
+            p_batch_id: formData.batch_id,
+            p_quantity_change: quantityChange,
+            p_transaction_type: formData.transaction_type,
+            p_reference_id: null,
+            p_notes: formData.notes || null,
+            p_created_by: user.id,
+          });
+
+        if (adjustError) throw adjustError;
+      } else {
+        // No batch selected - just create transaction record
+        const { error: txError } = await supabase
+          .from('inventory_transactions')
+          .insert([{
+            ...formData,
+            batch_id: null,
+            reference_number: formData.reference_number || null,
+            notes: formData.notes || null,
+            created_by: user.id,
+          }]);
+
+        if (txError) throw txError;
       }
 
       setModalOpen(false);
@@ -560,17 +548,17 @@ export function Inventory() {
             <h1 className="text-3xl font-bold text-gray-900">Inventory Management</h1>
             <p className="text-gray-600 mt-1">Track transactions, returns, and rejections</p>
           </div>
-          {canManage && (
+          {canManage && activeTab === 'transactions' && (
             <button
               onClick={() => {
                 resetForm();
-                setModalType(activeTab === 'transactions' ? 'transaction' : activeTab === 'returns' ? 'return' : 'rejection');
+                setModalType('transaction');
                 setModalOpen(true);
               }}
               className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
             >
               <Plus className="w-5 h-5" />
-              {activeTab === 'transactions' ? 'Add Transaction' : activeTab === 'returns' ? 'Create Return' : 'Report Rejection'}
+              Add Transaction
             </button>
           )}
         </div>
@@ -613,16 +601,31 @@ export function Inventory() {
           </nav>
         </div>
 
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              <p className="text-red-700">{error}</p>
+            </div>
+            <button
+              onClick={loadData}
+              className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         {activeTab === 'transactions' && (
           <DataTable columns={transactionColumns} data={transactions} loading={loading} />
         )}
 
         {activeTab === 'returns' && (
-          <DataTable columns={returnColumns} data={returns} loading={loading} />
+          <MaterialReturns />
         )}
 
         {activeTab === 'rejections' && (
-          <DataTable columns={rejectionColumns} data={rejections} loading={loading} />
+          <StockRejections />
         )}
 
         <Modal
