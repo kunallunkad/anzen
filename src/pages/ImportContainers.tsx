@@ -36,6 +36,7 @@ interface ImportContainer {
   locked_at: string | null;
   notes: string;
   suppliers?: Supplier;
+  linked_expenses_total?: number;
 }
 
 interface LinkedExpense {
@@ -109,7 +110,9 @@ export default function ImportContainers() {
   const fetchContainers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+
+      // Fetch containers with suppliers
+      const { data: containersData, error } = await supabase
         .from('import_containers')
         .select(`
           *,
@@ -118,10 +121,28 @@ export default function ImportContainers() {
             company_name
           )
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false});
 
       if (error) throw error;
-      setContainers(data || []);
+
+      // For each container, calculate linked expenses total
+      const containersWithExpenses = await Promise.all(
+        (containersData || []).map(async (container) => {
+          const { data: expenses } = await supabase
+            .from('finance_expenses')
+            .select('amount')
+            .eq('import_container_id', container.id);
+
+          const linkedExpensesTotal = expenses?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
+
+          return {
+            ...container,
+            linked_expenses_total: linkedExpensesTotal
+          };
+        })
+      );
+
+      setContainers(containersWithExpenses);
     } catch (error: any) {
       console.error('Error fetching containers:', error.message);
       alert('Failed to load import containers');
@@ -403,9 +424,14 @@ export default function ImportContainers() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="text-sm text-gray-900">
-                        {formatCurrency(container.total_import_expenses || 0, 'IDR')}
+                      <div className="text-sm text-gray-900 font-semibold">
+                        {formatCurrency(container.linked_expenses_total || 0, 'IDR')}
                       </div>
+                      {container.total_import_expenses > 0 && container.total_import_expenses !== container.linked_expenses_total && (
+                        <div className="text-xs text-gray-500">
+                          Direct: {formatCurrency(container.total_import_expenses, 'IDR')}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       {getStatusBadge(container.status)}

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Plus, DollarSign, Package, Truck, Building2, CreditCard as Edit, Trash2, FileText, Upload, X, ExternalLink, Download, Eye } from 'lucide-react';
 import { Modal } from '../Modal';
-import { FileUpload } from '../FileUpload';
 
 interface FinanceExpense {
   id: string;
@@ -1713,15 +1712,32 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
                 </div>
               )}
 
-              {/* File upload component */}
-              <FileUpload
-                onFilesSelected={(files) => setUploadingFiles([...uploadingFiles, ...files])}
-                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-                multiple
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Upload invoices, receipts, or bills (PDF, images, or documents)
-              </p>
+              {/* Simple file input */}
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) {
+                      setUploadingFiles([...uploadingFiles, ...Array.from(files)]);
+                    }
+                  }}
+                  className="hidden"
+                  id="expense-file-upload"
+                />
+                <label
+                  htmlFor="expense-file-upload"
+                  className="cursor-pointer flex flex-col items-center"
+                >
+                  <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                  <span className="text-sm text-blue-600 font-medium">Click to upload files</span>
+                  <span className="text-xs text-gray-500 mt-1">
+                    PDF, images, or documents (max 10MB each)
+                  </span>
+                </label>
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
