@@ -78,6 +78,32 @@ export default function ImportContainers() {
   useEffect(() => {
     fetchContainers();
     fetchSuppliers();
+
+    // Set up realtime subscriptions for import containers and linked expenses
+    const containerSubscription = supabase
+      .channel('container-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'import_containers' },
+        () => {
+          fetchContainers();
+        }
+      )
+      .subscribe();
+
+    const expenseSubscription = supabase
+      .channel('expense-container-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'finance_expenses' },
+        () => {
+          fetchContainers();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      containerSubscription.unsubscribe();
+      expenseSubscription.unsubscribe();
+    };
   }, []);
 
   const fetchContainers = async () => {

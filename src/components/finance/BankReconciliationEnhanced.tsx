@@ -264,6 +264,37 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
     loadBankAccounts();
     loadExpenses();
     loadCustomers();
+
+    // Set up realtime subscriptions for bank statements and related changes
+    const bankStatementSubscription = supabase
+      .channel('bank-statement-recon-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'bank_statement_lines' },
+        () => {
+          if (selectedBank) {
+            loadStatementLines();
+          }
+        }
+      )
+      .subscribe();
+
+    const expenseSubscription = supabase
+      .channel('expense-recon-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'finance_expenses' },
+        () => {
+          loadExpenses();
+          if (selectedBank) {
+            loadStatementLines();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      bankStatementSubscription.unsubscribe();
+      expenseSubscription.unsubscribe();
+    };
   }, []);
 
   const loadCustomers = async () => {

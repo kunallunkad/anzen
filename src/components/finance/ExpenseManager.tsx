@@ -330,6 +330,32 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
 
   useEffect(() => {
     loadData();
+
+    // Set up realtime subscriptions for expenses and bank statements
+    const expenseSubscription = supabase
+      .channel('expense-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'finance_expenses' },
+        () => {
+          loadData();
+        }
+      )
+      .subscribe();
+
+    const bankStatementSubscription = supabase
+      .channel('bank-statement-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'bank_statement_lines' },
+        () => {
+          loadData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      expenseSubscription.unsubscribe();
+      bankStatementSubscription.unsubscribe();
+    };
   }, []);
 
   const loadData = async () => {
@@ -1568,11 +1594,11 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
 
             {/* Linked Bank Statement Section */}
             {editingExpense && editingExpense.bank_statement_lines && editingExpense.bank_statement_lines.length > 0 && (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="p-4 bg-green-50 border border-green-300 rounded-lg">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-blue-600" />
-                    <h4 className="font-semibold text-blue-900">Linked Transaction</h4>
+                    <FileText className="w-5 h-5 text-green-600" />
+                    <h4 className="font-semibold text-green-900">Linked Bank Transaction</h4>
                   </div>
                   {canManage && (
                     <button
@@ -1584,36 +1610,34 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
                     </button>
                   )}
                 </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Type:</span>
-                    <span className="font-medium text-gray-900">Expense</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Category:</span>
-                    <span className="font-medium text-gray-900">
-                      {expenseCategories.find(c => c.value === editingExpense.expense_category)?.label || editingExpense.expense_category}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Amount:</span>
-                    <span className="font-medium text-gray-900">
-                      Rp {editingExpense.amount.toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Date:</span>
-                    <span className="font-medium text-gray-900">
-                      {new Date(editingExpense.expense_date).toLocaleDateString('id-ID')}
-                    </span>
-                  </div>
-                  {editingExpense.description && (
-                    <div className="pt-2 border-t border-blue-200">
-                      <div className="text-gray-600 mb-1">Description:</div>
-                      <div className="text-gray-900">{editingExpense.description}</div>
+                {editingExpense.bank_statement_lines.map((line) => (
+                  <div key={line.id} className="space-y-2 text-sm bg-white p-3 rounded border border-green-200">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Bank:</span>
+                      <span className="font-medium text-gray-900">
+                        {line.bank_accounts?.bank_name} - {line.bank_accounts?.account_number}
+                      </span>
                     </div>
-                  )}
-                </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Transaction Date:</span>
+                      <span className="font-medium text-gray-900">
+                        {new Date(line.transaction_date).toLocaleDateString('id-ID')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Amount:</span>
+                      <span className="font-medium text-gray-900">
+                        Rp {(line.debit_amount || line.credit_amount || 0).toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                    {line.description && (
+                      <div className="pt-2 border-t border-green-200">
+                        <div className="text-gray-600 mb-1">Bank Description:</div>
+                        <div className="text-gray-900 font-medium">{line.description}</div>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
 
@@ -1820,18 +1844,56 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
               </div>
             )}
 
-            {/* Bank Reconciliation Status */}
+            {/* Bank Reconciliation Status - Enhanced Details */}
             {viewingExpense.bank_statement_lines && viewingExpense.bank_statement_lines.length > 0 && (
               <div className="pb-4 border-b">
-                <label className="text-xs text-gray-500 font-medium uppercase mb-2 block">Bank Reconciliation</label>
-                <div className="space-y-2">
+                <label className="text-xs text-gray-500 font-medium uppercase mb-3 block">
+                  <FileText className="w-4 h-4 inline mr-1" />
+                  Bank Reconciliation
+                </label>
+                <div className="space-y-3">
                   {viewingExpense.bank_statement_lines.map((line) => (
-                    <div key={line.id} className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded">
-                      <span className="text-xs text-green-700">
-                        ✓ Linked to Bank Statement: {new Date(line.transaction_date).toLocaleDateString()} -
-                        {line.bank_accounts?.bank_name} {line.bank_accounts?.account_number} -
-                        Rp {(line.debit_amount || line.credit_amount || 0).toLocaleString('id-ID')}
-                      </span>
+                    <div key={line.id} className="p-4 bg-green-50 border border-green-300 rounded-lg">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-green-700 bg-green-200 rounded">
+                          ✓ LINKED TO BANK
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <div className="text-xs text-gray-600 font-medium mb-1">Bank Account</div>
+                          <div className="text-gray-900 font-semibold">
+                            {line.bank_accounts?.bank_name}
+                          </div>
+                          <div className="text-xs text-gray-600">{line.bank_accounts?.account_number}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-600 font-medium mb-1">Transaction Date</div>
+                          <div className="text-gray-900 font-semibold">
+                            {new Date(line.transaction_date).toLocaleDateString('id-ID')}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-600 font-medium mb-1">Bank Transaction Amount</div>
+                          <div className="text-lg text-green-700 font-bold">
+                            Rp {(line.debit_amount || line.credit_amount || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-600 font-medium mb-1">Expense Amount</div>
+                          <div className="text-lg text-gray-900 font-bold">
+                            Rp {viewingExpense.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                        </div>
+                      </div>
+                      {line.description && (
+                        <div className="mt-3 pt-3 border-t border-green-200">
+                          <div className="text-xs text-gray-600 font-medium mb-1">Bank Statement Description</div>
+                          <div className="text-sm text-gray-900 font-medium bg-white p-2 rounded border border-green-200">
+                            {line.description}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
