@@ -81,7 +81,28 @@ export function FundTransferManager({ canManage }: FundTransferManagerProps) {
 
   useEffect(() => {
     loadData();
-  }, []);
+
+    // Set up realtime subscription for bank statement changes
+    const bankStatementSubscription = supabase
+      .channel('bank-statement-fund-transfer-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'bank_statement_lines' },
+        () => {
+          // Reload bank statements when changes occur
+          if (formData.from_bank_account_id) {
+            loadBankStatements(formData.from_bank_account_id, 'from', editingTransfer?.from_bank_statement_line_id || undefined);
+          }
+          if (formData.to_bank_account_id) {
+            loadBankStatements(formData.to_bank_account_id, 'to', editingTransfer?.to_bank_statement_line_id || undefined);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      bankStatementSubscription.unsubscribe();
+    };
+  }, [formData.from_bank_account_id, formData.to_bank_account_id]);
 
   const loadData = async () => {
     try {
@@ -123,14 +144,18 @@ export function FundTransferManager({ canManage }: FundTransferManagerProps) {
     }
 
     try {
-      // Load unlinked statements
+      // Load ALL unlinked statements (no date or limit restrictions)
+      // Must not be linked to any other transaction types
       let query = supabase
         .from('bank_statement_lines')
         .select('id, transaction_date, description, debit_amount, credit_amount, reconciliation_status')
         .eq('bank_account_id', bankAccountId)
         .is('matched_fund_transfer_id', null)
-        .order('transaction_date', { ascending: false })
-        .limit(50);
+        .is('matched_expense_id', null)
+        .is('matched_receipt_id', null)
+        .is('matched_petty_cash_id', null)
+        .is('matched_entry_id', null)
+        .order('transaction_date', { ascending: false });
 
       const { data, error } = await query;
       if (error) throw error;
@@ -144,7 +169,7 @@ export function FundTransferManager({ canManage }: FundTransferManagerProps) {
           .select('id, transaction_date, description, debit_amount, credit_amount, reconciliation_status')
           .eq('id', includeLinkedId)
           .single();
-        
+
         if (linkedData && !statements.find(s => s.id === linkedData.id)) {
           // Add at the top of the list
           statements = [linkedData, ...statements];
@@ -719,24 +744,35 @@ export function FundTransferManager({ canManage }: FundTransferManagerProps) {
                     min="0.01"
                   />
                 </div>
-                {formData.from_bank_account_id && fromBankStatements.length > 0 && (
+                {formData.from_bank_account_id && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       🔗 Link to Bank Statement (Optional)
                     </label>
-                    <select
-                      value={formData.from_bank_statement_line_id}
-                      onChange={(e) => setFormData({ ...formData, from_bank_statement_line_id: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    >
-                      <option value="">No link</option>
-                      {fromBankStatements.map((stmt) => (
-                        <option key={stmt.id} value={stmt.id}>
-                          {formatDateDDMMYY(stmt.transaction_date)} -{stmt.description?.substring(0, 40)} -
-                          {getFromCurrency() === 'USD' ? '$' : 'Rp'} {(stmt.debit_amount || stmt.credit_amount || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </option>
-                      ))}
-                    </select>
+                    {fromBankStatements.length > 0 ? (
+                      <>
+                        <select
+                          value={formData.from_bank_statement_line_id}
+                          onChange={(e) => setFormData({ ...formData, from_bank_statement_line_id: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        >
+                          <option value="">No link</option>
+                          {fromBankStatements.map((stmt) => (
+                            <option key={stmt.id} value={stmt.id}>
+                              {formatDateDDMMYY(stmt.transaction_date)} - {stmt.description?.substring(0, 40)} -
+                              {getFromCurrency() === 'USD' ? '$' : 'Rp'} {(stmt.debit_amount || stmt.credit_amount || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {fromBankStatements.length} unlinked transaction{fromBankStatements.length !== 1 ? 's' : ''} available
+                        </p>
+                      </>
+                    ) : (
+                      <div className="text-sm text-gray-500 italic py-2 px-3 bg-gray-50 rounded-lg border border-gray-200">
+                        No unlinked transactions available
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -810,24 +846,35 @@ export function FundTransferManager({ canManage }: FundTransferManagerProps) {
                     </p>
                   )}
                 </div>
-                {formData.to_bank_account_id && toBankStatements.length > 0 && (
+                {formData.to_bank_account_id && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       🔗 Link to Bank Statement (Optional)
                     </label>
-                    <select
-                      value={formData.to_bank_statement_line_id}
-                      onChange={(e) => setFormData({ ...formData, to_bank_statement_line_id: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    >
-                      <option value="">No link</option>
-                      {toBankStatements.map((stmt) => (
-                        <option key={stmt.id} value={stmt.id}>
-                          {formatDateDDMMYY(stmt.transaction_date)} -{stmt.description?.substring(0, 40)} -
-                          {getToCurrency() === 'USD' ? '$' : 'Rp'} {(stmt.debit_amount || stmt.credit_amount || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </option>
-                      ))}
-                    </select>
+                    {toBankStatements.length > 0 ? (
+                      <>
+                        <select
+                          value={formData.to_bank_statement_line_id}
+                          onChange={(e) => setFormData({ ...formData, to_bank_statement_line_id: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        >
+                          <option value="">No link</option>
+                          {toBankStatements.map((stmt) => (
+                            <option key={stmt.id} value={stmt.id}>
+                              {formatDateDDMMYY(stmt.transaction_date)} - {stmt.description?.substring(0, 40)} -
+                              {getToCurrency() === 'USD' ? '$' : 'Rp'} {(stmt.debit_amount || stmt.credit_amount || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {toBankStatements.length} unlinked transaction{toBankStatements.length !== 1 ? 's' : ''} available
+                        </p>
+                      </>
+                    ) : (
+                      <div className="text-sm text-gray-500 italic py-2 px-3 bg-gray-50 rounded-lg border border-gray-200">
+                        No unlinked transactions available
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
