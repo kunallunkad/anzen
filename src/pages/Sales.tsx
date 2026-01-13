@@ -1503,7 +1503,7 @@ export function Sales() {
                         <div className="flex items-center gap-2 text-[10px] px-2 py-1 bg-white rounded border border-gray-200">
                           <div className="flex items-center gap-1">
                             <span className="text-gray-600">Cost/Unit:</span>
-                            <span className="font-semibold text-gray-900">Rp {costPerUnit.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</span>
+                            <span className="font-semibold text-gray-900">Rp {costPerUnit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                           <div className="h-3 w-px bg-gray-300" />
                           <div className="flex items-center gap-1">
@@ -1527,7 +1527,7 @@ export function Sales() {
                             <span className={`font-semibold ${
                               item.unit_price > costPerUnit ? 'text-green-600' : 'text-red-600'
                             }`}>
-                              Rp {(item.unit_price - costPerUnit).toLocaleString('id-ID', { maximumFractionDigits: 0 })}
+                              Rp {(item.unit_price - costPerUnit).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           </div>
                         </div>
