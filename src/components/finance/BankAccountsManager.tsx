@@ -123,7 +123,7 @@ export function BankAccountsManager({ canManage }: Props) {
     { key: 'bank_name', label: 'Bank' },
     { key: 'account_number', label: 'Account #' },
     { key: 'type', label: 'Type', render: (a: BankAccount) => <span className="capitalize">{a.account_type}</span> },
-    { key: 'balance', label: 'Balance', render: (a: BankAccount) => <span className="font-semibold">Rp {a.current_balance.toLocaleString('id-ID')}</span> },
+    { key: 'balance', label: 'Balance', render: (a: BankAccount) => <span className="font-semibold">Rp {a.current_balance.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
     { key: 'status', label: 'Status', render: (a: BankAccount) => (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
         a.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'

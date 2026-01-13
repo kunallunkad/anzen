@@ -1082,7 +1082,7 @@ export function Sales() {
       key: 'total_amount',
       label: 'Total Amount',
       render: (inv: SalesInvoice) => (
-        <span className="font-medium">Rp {inv.total_amount.toLocaleString('id-ID')}</span>
+        <span className="font-medium">Rp {inv.total_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
       )
     },
     {
@@ -1090,7 +1090,7 @@ export function Sales() {
       label: 'Paid Amount',
       render: (inv: SalesInvoice) => (
         <span className="text-green-600 font-medium">
-          Rp {(inv.paid_amount || 0).toLocaleString('id-ID')}
+          Rp {(inv.paid_amount || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
       )
     },
@@ -1101,7 +1101,7 @@ export function Sales() {
         <span className={`font-medium ${
           (inv.balance_amount || 0) === 0 ? 'text-gray-400' : 'text-orange-600'
         }`}>
-          Rp {(inv.balance_amount || 0).toLocaleString('id-ID')}
+          Rp {(inv.balance_amount || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
       )
     },
@@ -1172,7 +1172,7 @@ export function Sales() {
           </div>
           <div className="bg-blue-50 rounded-lg shadow p-6">
             <p className="text-sm text-blue-600">Total Revenue</p>
-            <p className="text-2xl font-bold text-blue-600 mt-1">Rp {stats.totalRevenue.toLocaleString('id-ID')}</p>
+            <p className="text-2xl font-bold text-blue-600 mt-1">Rp {stats.totalRevenue.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
           <div className="bg-red-50 rounded-lg shadow p-6">
             <p className="text-sm text-red-600">Pending Payment</p>
@@ -1508,7 +1508,7 @@ export function Sales() {
                           <div className="h-3 w-px bg-gray-300" />
                           <div className="flex items-center gap-1">
                             <span className="text-gray-600">Suggested Price (25%):</span>
-                            <span className="font-semibold text-blue-600">Rp {suggestedPrice.toLocaleString('id-ID')}</span>
+                            <span className="font-semibold text-blue-600">Rp {suggestedPrice.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                           <div className="h-3 w-px bg-gray-300" />
                           <div className="flex items-center gap-1">
@@ -1541,19 +1541,19 @@ export function Sales() {
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
-                    <span className="font-medium">Rp {calculateTotals().subtotal.toLocaleString('id-ID')}</span>
+                    <span className="font-medium">Rp {calculateTotals().subtotal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Tax:</span>
-                    <span className="font-medium">Rp {calculateTotals().taxAmount.toLocaleString('id-ID')}</span>
+                    <span className="font-medium">Rp {calculateTotals().taxAmount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Discount:</span>
-                    <span className="font-medium">-Rp {formData.discount.toLocaleString('id-ID')}</span>
+                    <span className="font-medium">-Rp {formData.discount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between text-sm font-bold border-t pt-1">
                     <span>Total:</span>
-                    <span className="text-blue-600">Rp {calculateTotals().total.toLocaleString('id-ID')}</span>
+                    <span className="text-blue-600">Rp {calculateTotals().total.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 </div>
               </div>

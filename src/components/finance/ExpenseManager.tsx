@@ -957,7 +957,7 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
   };
 
   const formatCurrency = (amount: number) => {
-    return `Rp ${amount?.toLocaleString('id-ID')}`;
+    return `Rp ${amount?.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -1626,7 +1626,7 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Amount:</span>
                       <span className="font-medium text-gray-900">
-                        Rp {(line.debit_amount || line.credit_amount || 0).toLocaleString('id-ID')}
+                        Rp {(line.debit_amount || line.credit_amount || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                     {line.description && (

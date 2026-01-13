@@ -534,7 +534,7 @@ export function ReceiptVoucherManager({ canManage }: ReceiptVoucherManagerProps)
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600">{voucher.allocated_to}</td>
                 <td className="px-4 py-3 text-right font-medium text-green-600">
-                  Rp {voucher.amount.toLocaleString('id-ID')}
+                  Rp {voucher.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-center gap-2">
@@ -730,7 +730,7 @@ export function ReceiptVoucherManager({ canManage }: ReceiptVoucherManagerProps)
                             </span>
                           </td>
                           <td className="px-3 py-2 text-right text-red-600 font-medium">
-                            Rp {balance.toLocaleString('id-ID')}
+                            Rp {balance.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                           <td className="px-3 py-2">
                             <input
@@ -764,9 +764,9 @@ export function ReceiptVoucherManager({ canManage }: ReceiptVoucherManagerProps)
                 <div className="text-right">
                   <span className="text-gray-500">Total Allocated:</span>
                   <span className={`ml-2 font-bold text-lg ${totalAllocated > formData.amount ? 'text-red-600' : 'text-green-600'}`}>
-                    Rp {totalAllocated.toLocaleString('id-ID')}
+                    Rp {totalAllocated.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
-                  <span className="text-gray-400 ml-1">/ Rp {formData.amount.toLocaleString('id-ID')}</span>
+                  <span className="text-gray-400 ml-1">/ Rp {formData.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
             </div>
@@ -818,7 +818,7 @@ export function ReceiptVoucherManager({ canManage }: ReceiptVoucherManagerProps)
               </div>
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-500">Amount</label>
-                <p className="text-2xl font-bold text-green-600">Rp {selectedVoucher.amount.toLocaleString('id-ID')}</p>
+                <p className="text-2xl font-bold text-green-600">Rp {selectedVoucher.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
               {selectedVoucher.description && (
                 <div className="col-span-2">
@@ -856,7 +856,7 @@ export function ReceiptVoucherManager({ canManage }: ReceiptVoucherManagerProps)
                             </span>
                           </td>
                           <td className="px-3 py-2 text-right font-medium">
-                            Rp {alloc.allocated_amount.toLocaleString('id-ID')}
+                            Rp {alloc.allocated_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                         </tr>
                       ))}

@@ -296,14 +296,14 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
     {
       key: 'total_amount',
       label: 'Amount',
-      render: (inv: SalesInvoice) => `Rp ${inv.total_amount.toLocaleString('id-ID')}`
+      render: (inv: SalesInvoice) => `Rp ${inv.total_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     },
     {
       key: 'paid',
       label: 'Paid',
       render: (inv: SalesInvoice) => (
         <span className="text-green-600">
-          Rp {(inv.paid_amount || 0).toLocaleString('id-ID')}
+          Rp {(inv.paid_amount || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
       )
     },
@@ -312,7 +312,7 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
       label: 'Balance',
       render: (inv: SalesInvoice) => (
         <span className="font-semibold text-red-600">
-          Rp {(inv.total_amount - (inv.paid_amount || 0)).toLocaleString('id-ID')}
+          Rp {(inv.total_amount - (inv.paid_amount || 0)).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
       )
     },
@@ -355,7 +355,7 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
       label: 'Amount',
       render: (pay: CustomerPayment) => (
         <span className="font-semibold text-green-600">
-          Rp {pay.amount.toLocaleString('id-ID')}
+          Rp {pay.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
       )
     },
@@ -607,8 +607,8 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
                         <div className="flex-1">
                           <div className="font-medium text-sm">{invoice.invoice_number}</div>
                           <div className="text-xs text-gray-600">Date: {new Date(invoice.invoice_date).toLocaleDateString()}</div>
-                          <div className="text-xs mt-1">Total: Rp {invoice.total_amount.toLocaleString('id-ID')}</div>
-                          <div className="text-xs text-orange-600 font-medium">Balance: Rp {balance.toLocaleString('id-ID')}</div>
+                          <div className="text-xs mt-1">Total: Rp {invoice.total_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          <div className="text-xs text-orange-600 font-medium">Balance: Rp {balance.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         </div>
                       </div>
                       {isSelected && (
@@ -644,18 +644,18 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
               <div className="border-t pt-3 space-y-1">
                 <div className="flex justify-between text-sm">
                   <span className="font-medium">Payment Amount:</span>
-                  <span className="font-bold">Rp {formData.amount.toLocaleString('id-ID')}</span>
+                  <span className="font-bold">Rp {formData.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Allocated:</span>
                   <span className={Object.values(selectedAllocations).reduce((a,b) => a+b, 0) > formData.amount ? 'text-red-600 font-bold' : 'text-green-600'}>
-                    Rp {Object.values(selectedAllocations).reduce((a,b) => a+b, 0).toLocaleString('id-ID')}
+                    Rp {Object.values(selectedAllocations).reduce((a,b) => a+b, 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Unallocated:</span>
                   <span className="text-gray-600">
-                    Rp {(formData.amount - Object.values(selectedAllocations).reduce((a,b) => a+b, 0)).toLocaleString('id-ID')}
+                    Rp {(formData.amount - Object.values(selectedAllocations).reduce((a,b) => a+b, 0)).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>

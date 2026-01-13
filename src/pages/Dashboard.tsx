@@ -178,7 +178,7 @@ export function Dashboard() {
     approvalCards.push({
       title: 'Overdue Invoices',
       value: stats.overdueInvoicesCount,
-      subtitle: `Rp ${stats.overdueInvoicesAmount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+      subtitle: `Rp ${stats.overdueInvoicesAmount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: AlertTriangle,
       color: 'red-gradient',
       link: 'sales'

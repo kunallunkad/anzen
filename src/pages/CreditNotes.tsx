@@ -603,7 +603,7 @@ export function CreditNotes() {
                   <option value="">Select Invoice</option>
                   {invoices.map((invoice) => (
                     <option key={invoice.id} value={invoice.id}>
-                      {invoice.invoice_number} - {new Date(invoice.invoice_date).toLocaleDateString()} - Rp {invoice.total_amount.toLocaleString('id-ID')}
+                      {invoice.invoice_number} - {new Date(invoice.invoice_date).toLocaleDateString()} - Rp {invoice.total_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </option>
                   ))}
                 </select>

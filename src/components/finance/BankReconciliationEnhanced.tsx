@@ -1902,10 +1902,10 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
                     )}
                   </td>
                   <td className="px-3 py-2 text-right text-red-600 font-medium whitespace-nowrap">
-                    {line.debit > 0 ? `${getCurrencySymbol(line.currency)} ${line.debit.toLocaleString('id-ID')}` : '-'}
+                    {line.debit > 0 ? `${getCurrencySymbol(line.currency)} ${line.debit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                   </td>
                   <td className="px-3 py-2 text-right text-green-600 font-medium whitespace-nowrap">
-                    {line.credit > 0 ? `${getCurrencySymbol(line.currency)} ${line.credit.toLocaleString('id-ID')}` : '-'}
+                    {line.credit > 0 ? `${getCurrencySymbol(line.currency)} ${line.credit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-col gap-1">
@@ -2030,7 +2030,7 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
                 <div className="mt-2 flex items-center justify-between">
                   <span className="text-sm text-gray-600">Amount:</span>
                   <span className="text-lg font-bold text-red-600">
-                    {getCurrencySymbol(recordingLine.currency)} {recordingLine.debit.toLocaleString('id-ID')}
+                    {getCurrencySymbol(recordingLine.currency)} {recordingLine.debit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
               )}
@@ -2038,7 +2038,7 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
                 <div className="mt-2 flex items-center justify-between">
                   <span className="text-sm text-gray-600">Amount:</span>
                   <span className="text-lg font-bold text-green-600">
-                    {getCurrencySymbol(recordingLine.currency)} {recordingLine.credit.toLocaleString('id-ID')}
+                    {getCurrencySymbol(recordingLine.currency)} {recordingLine.credit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
               )}
@@ -2169,7 +2169,7 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
                             {expense.voucher_number ? `[${expense.voucher_number}] ` : ''}
                             {new Date(expense.expense_date).toLocaleDateString('id-ID')} -
                             {expense.description} -
-                            Rp {expense.amount.toLocaleString('id-ID')}
+                            Rp {expense.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </option>
                         ))}
                       </select>
@@ -2584,7 +2584,7 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
                     <div className="flex justify-between">
                       <span className="text-gray-600">Amount:</span>
                       <span className="font-medium text-gray-900">
-                        {editingLine.currency === 'USD' ? '$' : 'Rp'} {editingLine.matchedExpense.amount.toLocaleString('id-ID')}
+                        {editingLine.currency === 'USD' ? '$' : 'Rp'} {editingLine.matchedExpense.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -2621,7 +2621,7 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
                     <div className="flex justify-between">
                       <span className="text-gray-600">Amount:</span>
                       <span className="font-medium text-gray-900">
-                        {editingLine.currency === 'USD' ? '$' : 'Rp'} {editingLine.matchedReceipt.amount.toLocaleString('id-ID')}
+                        {editingLine.currency === 'USD' ? '$' : 'Rp'} {editingLine.matchedReceipt.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -2654,7 +2654,7 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
                     <div className="flex justify-between">
                       <span className="text-gray-600">Amount:</span>
                       <span className="font-medium text-gray-900">
-                        {editingLine.currency === 'USD' ? '$' : 'Rp'} {editingLine.matchedFundTransfer.amount.toLocaleString('id-ID')}
+                        {editingLine.currency === 'USD' ? '$' : 'Rp'} {editingLine.matchedFundTransfer.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                     <div className="flex justify-between">

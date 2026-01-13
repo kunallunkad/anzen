@@ -308,12 +308,12 @@ export function PaymentVoucherManager({ canManage }: PaymentVoucherManagerProps)
                     {voucher.payment_method.replace('_', ' ')}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-right">Rp {voucher.amount.toLocaleString('id-ID')}</td>
+                <td className="px-4 py-3 text-right">Rp {voucher.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td className="px-4 py-3 text-right text-orange-600">
-                  {voucher.pph_amount > 0 ? `Rp ${voucher.pph_amount.toLocaleString('id-ID')}` : '-'}
+                  {voucher.pph_amount > 0 ? `Rp ${voucher.pph_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                 </td>
                 <td className="px-4 py-3 text-right font-medium text-red-600">
-                  Rp {voucher.net_amount.toLocaleString('id-ID')}
+                  Rp {voucher.net_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
               </tr>
             ))}
@@ -441,15 +441,15 @@ export function PaymentVoucherManager({ canManage }: PaymentVoucherManagerProps)
             <div className="mt-2 p-3 bg-gray-50 rounded-lg">
               <div className="flex justify-between text-sm">
                 <span>Gross Amount:</span>
-                <span>Rp {formData.amount.toLocaleString('id-ID')}</span>
+                <span>Rp {formData.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between text-sm text-orange-600">
                 <span>Less: PPh Withholding:</span>
-                <span>-Rp {formData.pph_amount.toLocaleString('id-ID')}</span>
+                <span>-Rp {formData.pph_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between font-medium text-lg border-t mt-2 pt-2">
                 <span>Net Payment:</span>
-                <span className="text-red-600">Rp {netAmount.toLocaleString('id-ID')}</span>
+                <span className="text-red-600">Rp {netAmount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             </div>
           </div>
@@ -484,7 +484,7 @@ export function PaymentVoucherManager({ canManage }: PaymentVoucherManagerProps)
                           <div className="text-gray-500 text-xs">{new Date(inv.invoice_date).toLocaleDateString('id-ID')}</div>
                         </td>
                         <td className="px-3 py-2 text-right text-red-600">
-                          Rp {inv.balance_amount.toLocaleString('id-ID')}
+                          Rp {inv.balance_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="px-3 py-2">
                           <input

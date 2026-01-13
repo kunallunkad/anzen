@@ -271,9 +271,9 @@ export function PurchaseInvoiceManager({ canManage }: PurchaseInvoiceManagerProp
                 <td className="px-4 py-3">{new Date(invoice.invoice_date).toLocaleDateString('id-ID')}</td>
                 <td className="px-4 py-3">{invoice.suppliers?.company_name}</td>
                 <td className="px-4 py-3 text-sm text-gray-500">{invoice.faktur_pajak_number || '-'}</td>
-                <td className="px-4 py-3 text-right">Rp {invoice.total_amount.toLocaleString('id-ID')}</td>
+                <td className="px-4 py-3 text-right">Rp {invoice.total_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td className="px-4 py-3 text-right text-red-600">
-                  Rp {invoice.balance_amount.toLocaleString('id-ID')}
+                  Rp {invoice.balance_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
                 <td className="px-4 py-3 text-center">
                   <span className={`px-2 py-1 rounded text-xs capitalize ${getStatusColor(invoice.status)}`}>
@@ -386,7 +386,7 @@ export function PurchaseInvoiceManager({ canManage }: PurchaseInvoiceManagerProp
           <div className="p-3 bg-gray-50 rounded-lg">
             <div className="flex justify-between font-medium text-lg">
               <span>Total:</span>
-              <span>Rp {(formData.subtotal + formData.tax_amount).toLocaleString('id-ID')}</span>
+              <span>Rp {(formData.subtotal + formData.tax_amount).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
           </div>
 
@@ -473,7 +473,7 @@ export function PurchaseInvoiceManager({ canManage }: PurchaseInvoiceManagerProp
                         </td>
                         <td className="px-3 py-2 font-mono">{batch.batch_number}</td>
                         <td className="px-3 py-2">{batch.products?.product_name}</td>
-                        <td className="px-3 py-2 text-right">Rp {total.toLocaleString('id-ID')}</td>
+                        <td className="px-3 py-2 text-right">Rp {total.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       </tr>
                     );
                   })}

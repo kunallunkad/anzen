@@ -619,13 +619,13 @@ export function BankReconciliation({ canManage }: BankReconciliationProps) {
                     <td className="px-3 py-2 text-gray-700 max-w-xs truncate">{line.description}</td>
                     <td className="px-3 py-2 text-gray-500 font-mono text-xs">{line.reference || '-'}</td>
                     <td className="px-3 py-2 text-right text-red-600 font-medium">
-                      {line.debit > 0 ? `Rp ${line.debit.toLocaleString('id-ID')}` : '-'}
+                      {line.debit > 0 ? `Rp ${line.debit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                     </td>
                     <td className="px-3 py-2 text-right text-green-600 font-medium">
-                      {line.credit > 0 ? `Rp ${line.credit.toLocaleString('id-ID')}` : '-'}
+                      {line.credit > 0 ? `Rp ${line.credit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                     </td>
                     <td className="px-3 py-2 text-right text-gray-900 font-semibold">
-                      Rp {line.balance.toLocaleString('id-ID')}
+                      Rp {line.balance.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-3 py-2 text-center">
                       {line.status === 'matched' && (

@@ -333,7 +333,7 @@ export default function ImportContainers() {
     if (currency === 'USD') {
       return `$ ${amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
-    return `Rp ${amount?.toLocaleString('id-ID')}`;
+    return `Rp ${amount?.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const calculateTotal = () => {

@@ -198,7 +198,7 @@ export default function OutstandingSummary() {
 
     const csv = [
       `${partyType === 'customer' ? 'Customer' : 'Supplier'} Outstanding Summary`,
-      `Generated: ${new Date().toLocaleString('id-ID')}`,
+      `Generated: ${new Date().toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       '',
       headers.join(','),
       ...rows.map(row => row.join(',')),

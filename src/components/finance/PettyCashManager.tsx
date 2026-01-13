@@ -477,7 +477,7 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
               <span className="text-green-100 font-medium">Petty Cash Balance</span>
             </div>
             <div className="text-4xl font-bold">
-              Rp {cashBalance.toLocaleString('id-ID')}
+              Rp {cashBalance.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-green-100 text-sm mt-2">
               Available for cash expenses
@@ -516,7 +516,7 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
             Rp {transactions
               .filter(t => t.transaction_type === 'withdraw')
               .reduce((sum, t) => sum + t.amount, 0)
-              .toLocaleString('id-ID')}
+              .toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <p className="text-sm text-gray-500">Total withdrawn from bank</p>
         </div>
@@ -529,7 +529,7 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
             Rp {transactions
               .filter(t => t.transaction_type === 'expense')
               .reduce((sum, t) => sum + t.amount, 0)
-              .toLocaleString('id-ID')}
+              .toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <p className="text-sm text-gray-500">Total spent from petty cash</p>
         </div>
@@ -601,10 +601,10 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
                       : tx.received_by_staff_name}
                   </td>
                   <td className="px-4 py-3 text-right font-medium text-blue-600">
-                    {tx.transaction_type === 'withdraw' ? `Rp ${tx.amount.toLocaleString('id-ID')}` : '-'}
+                    {tx.transaction_type === 'withdraw' ? `Rp ${tx.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                   </td>
                   <td className="px-4 py-3 text-right font-medium text-red-600">
-                    {tx.transaction_type === 'expense' ? `Rp ${tx.amount.toLocaleString('id-ID')}` : '-'}
+                    {tx.transaction_type === 'expense' ? `Rp ${tx.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                   </td>
                   {canManage && (
                     <td className="px-4 py-3">
@@ -733,7 +733,7 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
             /* Add Expense Form */
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
               <p className="text-sm text-orange-700 mb-1">Record a new petty cash expense with receipt details</p>
-              <p className="text-xs text-orange-600 mb-4">Available Balance: Rp {cashBalance.toLocaleString('id-ID')}</p>
+              <p className="text-xs text-orange-600 mb-4">Available Balance: Rp {cashBalance.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -964,7 +964,7 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
                 </span>
               </div>
               <div className="text-3xl font-bold text-gray-900">
-                Rp {viewingTransaction.amount.toLocaleString('id-ID')}
+                Rp {viewingTransaction.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </div>
 

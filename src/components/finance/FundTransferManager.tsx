@@ -576,16 +576,16 @@ export function FundTransferManager({ canManage }: FundTransferManagerProps) {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
                     {transfer.from_currency === transfer.to_currency ? (
                       <div>
-                        {transfer.from_currency === 'USD' ? '$' : 'Rp'} {transfer.from_amount.toLocaleString('id-ID')}
+                        {transfer.from_currency === 'USD' ? '$' : 'Rp'} {transfer.from_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     ) : (
                       <div className="space-y-1">
                         <div className="text-red-600">
-                          {transfer.from_currency === 'USD' ? '$' : 'Rp'} {transfer.from_amount.toLocaleString('id-ID')}
+                          {transfer.from_currency === 'USD' ? '$' : 'Rp'} {transfer.from_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                         <div className="text-xs text-gray-500">→</div>
                         <div className="text-green-600">
-                          {transfer.to_currency === 'USD' ? '$' : 'Rp'} {transfer.to_amount.toLocaleString('id-ID')}
+                          {transfer.to_currency === 'USD' ? '$' : 'Rp'} {transfer.to_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                         {transfer.exchange_rate && (
                           <div className="text-xs text-gray-500">
@@ -733,7 +733,7 @@ export function FundTransferManager({ canManage }: FundTransferManagerProps) {
                       {fromBankStatements.map((stmt) => (
                         <option key={stmt.id} value={stmt.id}>
                           {formatDateDDMMYY(stmt.transaction_date)} -{stmt.description?.substring(0, 40)} -
-                          {getFromCurrency() === 'USD' ? '$' : 'Rp'} {(stmt.debit_amount || stmt.credit_amount || 0).toLocaleString('id-ID')}
+                          {getFromCurrency() === 'USD' ? '$' : 'Rp'} {(stmt.debit_amount || stmt.credit_amount || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </option>
                       ))}
                     </select>
@@ -806,7 +806,7 @@ export function FundTransferManager({ canManage }: FundTransferManagerProps) {
                   />
                   {getFromCurrency() !== getToCurrency() && formData.from_amount > 0 && formData.to_amount > 0 && (
                     <p className="text-xs text-gray-600 mt-1">
-                      Exchange Rate: 1 USD = {(getFromCurrency() === 'USD' ? formData.to_amount / formData.from_amount : formData.from_amount / formData.to_amount).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} IDR
+                      Exchange Rate: 1 USD = {(getFromCurrency() === 'USD' ? formData.to_amount / formData.from_amount : formData.from_amount / formData.to_amount).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} IDR
                     </p>
                   )}
                 </div>
@@ -824,7 +824,7 @@ export function FundTransferManager({ canManage }: FundTransferManagerProps) {
                       {toBankStatements.map((stmt) => (
                         <option key={stmt.id} value={stmt.id}>
                           {formatDateDDMMYY(stmt.transaction_date)} -{stmt.description?.substring(0, 40)} -
-                          {getToCurrency() === 'USD' ? '$' : 'Rp'} {(stmt.debit_amount || stmt.credit_amount || 0).toLocaleString('id-ID')}
+                          {getToCurrency() === 'USD' ? '$' : 'Rp'} {(stmt.debit_amount || stmt.credit_amount || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </option>
                       ))}
                     </select>

@@ -170,11 +170,11 @@ export function JournalEntryViewer({ canManage }: JournalEntryViewerProps) {
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-blue-50 rounded-lg p-4">
           <p className="text-sm text-blue-600">Total Debit</p>
-          <p className="text-2xl font-bold text-blue-700">Rp {totals.debit.toLocaleString('id-ID')}</p>
+          <p className="text-2xl font-bold text-blue-700">Rp {totals.debit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
         <div className="bg-green-50 rounded-lg p-4">
           <p className="text-sm text-green-600">Total Credit</p>
-          <p className="text-2xl font-bold text-green-700">Rp {totals.credit.toLocaleString('id-ID')}</p>
+          <p className="text-2xl font-bold text-green-700">Rp {totals.credit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
       </div>
 
@@ -204,8 +204,8 @@ export function JournalEntryViewer({ canManage }: JournalEntryViewerProps) {
                 </td>
                 <td className="px-4 py-3 font-mono text-sm">{entry.reference_number || '-'}</td>
                 <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{entry.description || '-'}</td>
-                <td className="px-4 py-3 text-right text-blue-600">Rp {entry.total_debit.toLocaleString('id-ID')}</td>
-                <td className="px-4 py-3 text-right text-green-600">Rp {entry.total_credit.toLocaleString('id-ID')}</td>
+                <td className="px-4 py-3 text-right text-blue-600">Rp {entry.total_debit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td className="px-4 py-3 text-right text-green-600">Rp {entry.total_credit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td className="px-4 py-3 text-center">
                   <button
                     onClick={() => handleViewEntry(entry)}
@@ -245,7 +245,7 @@ export function JournalEntryViewer({ canManage }: JournalEntryViewerProps) {
               </div>
               <div>
                 <span className="text-gray-500">Posted:</span>
-                <span className="ml-2">{new Date(selectedEntry.posted_at).toLocaleString('id-ID')}</span>
+                <span className="ml-2">{new Date(selectedEntry.posted_at).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             </div>
 
@@ -276,10 +276,10 @@ export function JournalEntryViewer({ canManage }: JournalEntryViewerProps) {
                       </td>
                       <td className="px-3 py-2 text-gray-600">{line.description || '-'}</td>
                       <td className="px-3 py-2 text-right text-blue-600">
-                        {line.debit > 0 ? `Rp ${line.debit.toLocaleString('id-ID')}` : ''}
+                        {line.debit > 0 ? `Rp ${line.debit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
                       </td>
                       <td className="px-3 py-2 text-right text-green-600">
-                        {line.credit > 0 ? `Rp ${line.credit.toLocaleString('id-ID')}` : ''}
+                        {line.credit > 0 ? `Rp ${line.credit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
                       </td>
                     </tr>
                   ))}
@@ -288,10 +288,10 @@ export function JournalEntryViewer({ canManage }: JournalEntryViewerProps) {
                   <tr>
                     <td colSpan={2} className="px-3 py-2 text-right">Total:</td>
                     <td className="px-3 py-2 text-right text-blue-700">
-                      Rp {selectedEntry.total_debit.toLocaleString('id-ID')}
+                      Rp {selectedEntry.total_debit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-3 py-2 text-right text-green-700">
-                      Rp {selectedEntry.total_credit.toLocaleString('id-ID')}
+                      Rp {selectedEntry.total_credit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                   </tr>
                 </tfoot>

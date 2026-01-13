@@ -69,7 +69,7 @@ export function TaxReports() {
   };
 
   const formatCurrency = (amount: number) => {
-    return `Rp ${amount?.toLocaleString('id-ID')}`;
+    return `Rp ${amount?.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const formatMonth = (monthStr: string) => {

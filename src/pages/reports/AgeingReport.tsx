@@ -182,7 +182,7 @@ export function AgeingReport() {
               <div>
                 <p className="text-sm text-gray-600">Total Outstanding</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
-                  Rp {totals.total_outstanding.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  Rp {totals.total_outstanding.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">{totals.invoice_count} invoices</p>
               </div>
@@ -192,7 +192,7 @@ export function AgeingReport() {
           <div className="bg-green-50 rounded-lg shadow p-6 border border-green-200">
             <p className="text-sm text-green-700 font-medium">Current (Not Due)</p>
             <p className="text-2xl font-bold text-green-900 mt-1">
-              Rp {totals.current.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              Rp {totals.current.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
             <p className="text-xs text-green-600 mt-1">
               {totals.total_outstanding > 0 ?
@@ -202,7 +202,7 @@ export function AgeingReport() {
           <div className="bg-orange-50 rounded-lg shadow p-6 border border-orange-200">
             <p className="text-sm text-orange-700 font-medium">Overdue</p>
             <p className="text-2xl font-bold text-orange-900 mt-1">
-              Rp {overdueTotal.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              Rp {overdueTotal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
             <p className="text-xs text-orange-600 mt-1">
               {totals.total_outstanding > 0 ?
@@ -212,7 +212,7 @@ export function AgeingReport() {
           <div className="bg-red-50 rounded-lg shadow p-6 border border-red-200">
             <p className="text-sm text-red-700 font-medium">90+ Days Critical</p>
             <p className="text-2xl font-bold text-red-900 mt-1">
-              Rp {totals.days_90_plus.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              Rp {totals.days_90_plus.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
             <p className="text-xs text-red-600 mt-1">Immediate action required</p>
           </div>
@@ -301,12 +301,12 @@ export function AgeingReport() {
                         </td>
                         <td className="px-6 py-4 text-center text-sm text-gray-500">{row.invoice_count}</td>
                         <td className="px-6 py-4 text-right text-sm font-bold text-gray-900">
-                          Rp {row.total_outstanding.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          Rp {row.total_outstanding.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="px-6 py-4 text-right text-sm">
                           {row.current > 0 ? (
                             <span className="text-green-600 font-medium">
-                              Rp {row.current.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                              Rp {row.current.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           ) : (
                             <span className="text-gray-300">-</span>
@@ -315,7 +315,7 @@ export function AgeingReport() {
                         <td className="px-6 py-4 text-right text-sm">
                           {row.days_1_30 > 0 ? (
                             <span className="text-yellow-600 font-medium">
-                              Rp {row.days_1_30.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                              Rp {row.days_1_30.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           ) : (
                             <span className="text-gray-300">-</span>
@@ -324,7 +324,7 @@ export function AgeingReport() {
                         <td className="px-6 py-4 text-right text-sm">
                           {row.days_31_60 > 0 ? (
                             <span className="text-orange-600 font-medium">
-                              Rp {row.days_31_60.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                              Rp {row.days_31_60.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           ) : (
                             <span className="text-gray-300">-</span>
@@ -333,7 +333,7 @@ export function AgeingReport() {
                         <td className="px-6 py-4 text-right text-sm">
                           {row.days_61_90 > 0 ? (
                             <span className="text-red-600 font-medium">
-                              Rp {row.days_61_90.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                              Rp {row.days_61_90.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           ) : (
                             <span className="text-gray-300">-</span>
@@ -342,7 +342,7 @@ export function AgeingReport() {
                         <td className="px-6 py-4 text-right text-sm">
                           {row.days_90_plus > 0 ? (
                             <span className="text-red-900 font-bold">
-                              Rp {row.days_90_plus.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                              Rp {row.days_90_plus.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           ) : (
                             <span className="text-gray-300">-</span>
@@ -355,22 +355,22 @@ export function AgeingReport() {
                       <td className="px-6 py-4 text-sm text-gray-900">TOTAL</td>
                       <td className="px-6 py-4 text-center text-sm text-gray-900">{totals.invoice_count}</td>
                       <td className="px-6 py-4 text-right text-sm text-gray-900">
-                        Rp {totals.total_outstanding.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        Rp {totals.total_outstanding.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="px-6 py-4 text-right text-sm text-green-700">
-                        Rp {totals.current.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        Rp {totals.current.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="px-6 py-4 text-right text-sm text-yellow-700">
-                        Rp {totals.days_1_30.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        Rp {totals.days_1_30.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="px-6 py-4 text-right text-sm text-orange-700">
-                        Rp {totals.days_31_60.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        Rp {totals.days_31_60.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="px-6 py-4 text-right text-sm text-red-700">
-                        Rp {totals.days_61_90.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        Rp {totals.days_61_90.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="px-6 py-4 text-right text-sm text-red-900">
-                        Rp {totals.days_90_plus.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        Rp {totals.days_90_plus.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                     </tr>
                   </>

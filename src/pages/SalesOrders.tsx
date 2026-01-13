@@ -166,7 +166,7 @@ export default function SalesOrders() {
   };
 
   const formatCurrency = (amount: number, currency: string) => {
-    const formatted = amount.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    const formatted = amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     return currency === 'USD' ? `$ ${formatted}` : `Rp ${formatted}`;
   };
 
