@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, DollarSign, Package, Truck, Building2, CreditCard as Edit, Trash2, FileText, Upload, X, ExternalLink, Download, Eye } from 'lucide-react';
+import { Plus, DollarSign, Package, Truck, Building2, CreditCard as Edit, Trash2, FileText, Upload, X, ExternalLink, Download, Eye, Clipboard } from 'lucide-react';
 import { Modal } from '../Modal';
 
 interface FinanceExpense {
@@ -300,6 +300,7 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
   const [reconFilter, setReconFilter] = useState<'all' | 'reconciled' | 'not_reconciled'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
+  const [showPasteHint, setShowPasteHint] = useState(false);
 
   // Default to 1 month date range
   const getDefaultStartDate = () => {
@@ -356,6 +357,41 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
       bankStatementSubscription.unsubscribe();
     };
   }, []);
+
+  // Paste handler for images
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      if (!modalOpen) return;
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const pastedFiles: File[] = [];
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+
+        if (item.type.indexOf('image') !== -1) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          if (blob) {
+            const fileName = `pasted-image-${Date.now()}.png`;
+            const file = new File([blob], fileName, { type: blob.type });
+            pastedFiles.push(file);
+          }
+        }
+      }
+
+      if (pastedFiles.length > 0) {
+        setUploadingFiles([...uploadingFiles, ...pastedFiles]);
+        setShowPasteHint(true);
+        setTimeout(() => setShowPasteHint(false), 2000);
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [modalOpen, uploadingFiles]);
 
   const loadData = async () => {
     try {
@@ -1713,7 +1749,11 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
               )}
 
               {/* Simple file input */}
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
+              <div
+                className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors"
+                onMouseEnter={() => setShowPasteHint(true)}
+                onMouseLeave={() => setShowPasteHint(false)}
+              >
                 <input
                   type="file"
                   multiple
@@ -1737,6 +1777,13 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
                     PDF, images, or documents (max 10MB each)
                   </span>
                 </label>
+
+                {showPasteHint && (
+                  <div className="flex items-center justify-center gap-2 text-xs text-green-600 font-medium animate-pulse mt-2">
+                    <Clipboard className="w-4 h-4" />
+                    <span>Press Ctrl+V to paste images from clipboard</span>
+                  </div>
+                )}
               </div>
             </div>
 
