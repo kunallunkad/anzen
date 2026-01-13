@@ -642,6 +642,43 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
           if (linkError) {
             console.error('Error linking to bank transaction:', linkError);
             alert('Expense updated but failed to link to bank transaction. Please link manually from Bank Reconciliation.');
+          } else {
+            // Fetch the expense again to get updated bank_statement_lines
+            const { data: refreshedExpense, error: refreshError } = await supabase
+              .from('finance_expenses')
+              .select(`
+                *,
+                batches (batch_number),
+                import_containers (container_ref),
+                delivery_challans (challan_number),
+                bank_accounts (bank_name, account_number),
+                bank_statement_lines (
+                  id,
+                  transaction_date,
+                  description,
+                  debit_amount,
+                  credit_amount,
+                  bank_account_id,
+                  bank_accounts (bank_name, account_number)
+                )
+              `)
+              .eq('id', editingExpense.id)
+              .single();
+
+            if (!refreshError && refreshedExpense) {
+              // Update local state with refreshed expense
+              setExpenses(prev => prev.map(exp =>
+                exp.id === editingExpense.id ? refreshedExpense : exp
+              ));
+
+              // Remove from unlinked transactions
+              setUnlinkedBankTransactions(prev =>
+                prev.filter(txn => txn.id !== selectedBankTransactionId)
+              );
+
+              // Add to reconciled list
+              setReconciledExpenseIds(prev => new Set(prev).add(editingExpense.id));
+            }
           }
         }
 
@@ -683,6 +720,9 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
         console.log('document_urls from DB:', newExpense?.document_urls);
         console.log('Full new expense:', newExpense);
 
+        // Variable to hold the final expense (may be refreshed if linked to bank)
+        let finalExpense = newExpense;
+
         // Link to bank transaction if selected
         if (selectedBankTransactionId && newExpense) {
           const { error: linkError } = await supabase
@@ -698,11 +738,46 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
           if (linkError) {
             console.error('Error linking to bank transaction:', linkError);
             alert('Expense created but failed to link to bank transaction. Please link manually from Bank Reconciliation.');
+          } else {
+            // Fetch the expense again to get updated bank_statement_lines
+            const { data: refreshedExpense, error: refreshError } = await supabase
+              .from('finance_expenses')
+              .select(`
+                *,
+                batches (batch_number),
+                import_containers (container_ref),
+                delivery_challans (challan_number),
+                bank_accounts (bank_name, account_number),
+                bank_statement_lines (
+                  id,
+                  transaction_date,
+                  description,
+                  debit_amount,
+                  credit_amount,
+                  bank_account_id,
+                  bank_accounts (bank_name, account_number)
+                )
+              `)
+              .eq('id', newExpense.id)
+              .single();
+
+            if (!refreshError && refreshedExpense) {
+              // Use refreshed expense with bank_statement_lines included
+              finalExpense = refreshedExpense;
+
+              // Remove from unlinked transactions
+              setUnlinkedBankTransactions(prev =>
+                prev.filter(txn => txn.id !== selectedBankTransactionId)
+              );
+
+              // Add to reconciled list
+              setReconciledExpenseIds(prev => new Set(prev).add(newExpense.id));
+            }
           }
         }
 
-        // Add to local state
-        setExpenses(prev => [newExpense, ...prev]);
+        // Add to local state (with bank link if applicable)
+        setExpenses(prev => [finalExpense, ...prev]);
         alert('Expense recorded successfully');
       }
 
