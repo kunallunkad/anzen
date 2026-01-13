@@ -1082,48 +1082,67 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
                   <FileText className="w-4 h-4" />
                   Attached Documents ({viewingTransaction.petty_cash_documents.length})
                 </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  {viewingTransaction.petty_cash_documents.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition"
-                    >
-                      <div className="flex-shrink-0">
-                        {doc.file_name.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                          <Image className="w-8 h-8 text-blue-600" />
-                        ) : (
-                          <FileText className="w-8 h-8 text-gray-600" />
+                <div className="grid grid-cols-1 gap-3">
+                  {viewingTransaction.petty_cash_documents.map((doc) => {
+                    const isImage = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(doc.file_name);
+                    return (
+                      <div
+                        key={doc.id}
+                        className="p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0">
+                              {isImage ? (
+                                <Image className="w-8 h-8 text-blue-600" />
+                              ) : (
+                                <FileText className="w-8 h-8 text-gray-600" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {doc.file_name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {doc.file_type} • {doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : 'Unknown size'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <a
+                              href={doc.file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                              title="View"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                            <a
+                              href={doc.file_url}
+                              download={doc.file_name}
+                              className="p-1.5 text-green-600 hover:bg-green-50 rounded"
+                              title="Download"
+                            >
+                              <Download className="w-4 h-4" />
+                            </a>
+                          </div>
+                        </div>
+                        {isImage && (
+                          <div className="mt-2">
+                            <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                              <img
+                                src={doc.file_url}
+                                alt={doc.file_name}
+                                className="w-full max-w-md rounded-lg border-2 border-gray-300 hover:border-blue-400 cursor-pointer shadow-sm hover:shadow-md transition-all"
+                                style={{ maxHeight: '300px', objectFit: 'contain' }}
+                              />
+                            </a>
+                          </div>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {doc.file_name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {doc.file_type} • {doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : 'Unknown size'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <a
-                          href={doc.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                          title="View"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                        <a
-                          href={doc.file_url}
-                          download={doc.file_name}
-                          className="p-1.5 text-green-600 hover:bg-green-50 rounded"
-                          title="Download"
-                        >
-                          <Download className="w-4 h-4" />
-                        </a>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

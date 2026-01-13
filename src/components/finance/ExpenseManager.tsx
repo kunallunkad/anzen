@@ -1970,34 +1970,51 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
                   <FileText className="w-4 h-4 inline mr-1" />
                   Supporting Documents ({viewingExpense.document_urls.length})
                 </label>
-                <div className="grid grid-cols-1 gap-2">
-                  {viewingExpense.document_urls.map((url, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                        <span className="text-sm text-blue-900 font-medium">Document {index + 1}</span>
+                <div className="grid grid-cols-1 gap-3">
+                  {viewingExpense.document_urls.map((url, index) => {
+                    const isImage = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(url);
+                    return (
+                      <div key={index} className="p-3 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <FileText className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                            <span className="text-sm text-blue-900 font-medium">Document {index + 1}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-white border border-blue-300 rounded hover:bg-blue-50"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              View
+                            </a>
+                            <a
+                              href={url}
+                              download
+                              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 bg-white border border-green-300 rounded hover:bg-green-50"
+                            >
+                              <Download className="w-3 h-3" />
+                              Download
+                            </a>
+                          </div>
+                        </div>
+                        {isImage && (
+                          <div className="mt-2">
+                            <a href={url} target="_blank" rel="noopener noreferrer">
+                              <img
+                                src={url}
+                                alt={`Document ${index + 1}`}
+                                className="w-full max-w-md rounded-lg border-2 border-gray-300 hover:border-blue-400 cursor-pointer shadow-sm hover:shadow-md transition-all"
+                                style={{ maxHeight: '300px', objectFit: 'contain' }}
+                              />
+                            </a>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-white border border-blue-300 rounded hover:bg-blue-50"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          View
-                        </a>
-                        <a
-                          href={url}
-                          download
-                          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 bg-white border border-green-300 rounded hover:bg-green-50"
-                        >
-                          <Download className="w-3 h-3" />
-                          Download
-                        </a>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
