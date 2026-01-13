@@ -110,13 +110,18 @@ export default function BankLedger({ selectedBank: propSelectedBank }: BankLedge
 
       const entries: any[] = [];
 
+      // Calculate next day for inclusive end date filtering
+      const endDatePlusOne = new Date(dateRange.end);
+      endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
+      const endDateStr = endDatePlusOne.toISOString().split('T')[0];
+
       // Get bank statement lines FIRST (actual bank transactions)
       const { data: bankLines } = await supabase
         .from('bank_statement_lines')
         .select('id, transaction_date, description, reference, debit_amount, credit_amount, matched_expense_id, matched_receipt_id, matched_entry_id, notes')
         .eq('bank_account_id', selectedBank)
         .gte('transaction_date', dateRange.start)
-        .lte('transaction_date', dateRange.end)
+        .lt('transaction_date', endDateStr)
         .order('transaction_date');
 
       if (bankLines) {

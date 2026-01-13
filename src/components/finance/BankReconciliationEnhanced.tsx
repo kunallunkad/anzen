@@ -376,12 +376,17 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
     if (!selectedBank) return;
     setLoading(true);
     try {
+      // Calculate next day for inclusive end date filtering
+      const endDatePlusOne = new Date(dateRange.end);
+      endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
+      const endDateStr = endDatePlusOne.toISOString().split('T')[0];
+
       const { data, error } = await supabase
         .from('bank_statement_lines')
         .select('*')
         .eq('bank_account_id', selectedBank)
         .gte('transaction_date', dateRange.start)
-        .lte('transaction_date', dateRange.end)
+        .lt('transaction_date', endDateStr)
         .order('transaction_date', { ascending: false });
 
       if (error) throw error;
@@ -1189,6 +1194,11 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
     if (!selectedBank) return;
 
     try {
+      // Calculate next day for inclusive end date filtering
+      const endDatePlusOne = new Date(dateRange.end);
+      endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
+      const endDateStr = endDatePlusOne.toISOString().split('T')[0];
+
       // Load unmatched statement lines
       const { data: lines, error: linesError } = await supabase
         .from('bank_statement_lines')
@@ -1196,7 +1206,7 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
         .eq('bank_account_id', selectedBank)
         .eq('reconciliation_status', 'unmatched')
         .gte('transaction_date', dateRange.start)
-        .lte('transaction_date', dateRange.end);
+        .lt('transaction_date', endDateStr);
 
       if (linesError) throw linesError;
       if (!lines || lines.length === 0) {
