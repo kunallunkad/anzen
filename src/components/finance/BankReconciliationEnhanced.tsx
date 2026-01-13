@@ -1194,121 +1194,27 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
     if (!selectedBank) return;
 
     try {
-      // Calculate next day for inclusive end date filtering
-      const endDatePlusOne = new Date(dateRange.end);
-      endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
-      const endDateStr = endDatePlusOne.toISOString().split('T')[0];
+      // Use the database function that enforces 7-day date tolerance
+      const { data, error } = await supabase.rpc('auto_match_smart');
 
-      // Load unmatched statement lines
-      const { data: lines, error: linesError } = await supabase
-        .from('bank_statement_lines')
-        .select('*')
-        .eq('bank_account_id', selectedBank)
-        .eq('reconciliation_status', 'unmatched')
-        .gte('transaction_date', dateRange.start)
-        .lt('transaction_date', endDateStr);
+      if (error) throw error;
 
-      if (linesError) throw linesError;
-      if (!lines || lines.length === 0) {
-        alert('No unmatched transactions to process');
-        return;
-      }
-
-      // Load all potential matching sources (Note: Petty cash is NOT reconciled - per user's finance rules)
-      const [expensesRes, payablesRes, receivablesRes] = await Promise.all([
-        supabase.from('finance_expenses').select('id, expense_date, amount, description, voucher_number'),
-        supabase.from('payment_vouchers').select('id, voucher_date, amount, description, voucher_number, supplier_id, suppliers(company_name)'),
-        supabase.from('customer_payments').select('id, payment_date, amount, notes, payment_number, customer_id, customers(company_name)'),
-      ]);
-
-      if (expensesRes.error) throw expensesRes.error;
-      if (payablesRes.error) throw payablesRes.error;
-      if (receivablesRes.error) throw receivablesRes.error;
-
-      const expensesList = expensesRes.data || [];
-      const payablesList = payablesRes.data || [];
-      const receivablesList = receivablesRes.data || [];
-
-      let matchCount = 0;
-      let debitMatched = 0;
-      let creditMatched = 0;
-
-      for (const line of lines) {
-        const isDebit = line.debit_amount > 0;
-        const isCredit = line.credit_amount > 0;
-        const amount = isDebit ? line.debit_amount : line.credit_amount;
-
-        let matched = false;
-
-        // DEBIT = Money OUT from bank
-        if (isDebit) {
-          // 1. Try match to Expenses
-          const expense = expensesList.find(exp =>
-            Math.abs(exp.amount - amount) < 0.01 ||
-            (exp.voucher_number && line.description && line.description.includes(exp.voucher_number))
-          );
-          if (expense) {
-            await supabase
-              .from('bank_statement_lines')
-              .update({
-                matched_expense_id: expense.id,
-                reconciliation_status: 'matched',
-                notes: `Auto-matched: Expense - ${expense.description}`,
-              })
-              .eq('id', line.id);
-            matched = true;
-            debitMatched++;
-          }
-
-          // 2. Try match to Supplier Payments (Payables)
-          if (!matched) {
-            const payable = payablesList.find(pay =>
-              Math.abs(pay.amount - amount) < 0.01 ||
-              (pay.voucher_number && line.description && line.description.includes(pay.voucher_number))
-            );
-            if (payable) {
-              await supabase
-                .from('bank_statement_lines')
-                .update({
-                  matched_entry_id: payable.id,
-                  reconciliation_status: 'matched',
-                  notes: `Auto-matched: Payment to ${payable.suppliers?.company_name || 'Supplier'} - ${payable.description || ''}`,
-                })
-                .eq('id', line.id);
-              matched = true;
-              debitMatched++;
-            }
-          }
-
-        }
-
-        // CREDIT = Money IN to bank
-        if (isCredit && !matched) {
-          // 1. Try match to Customer Receipts (Receivables)
-          const receivable = receivablesList.find(rec =>
-            Math.abs(rec.amount - amount) < 0.01 ||
-            (rec.payment_number && line.description && line.description.includes(rec.payment_number))
-          );
-          if (receivable) {
-            await supabase
-              .from('bank_statement_lines')
-              .update({
-                matched_receipt_id: receivable.id,
-                reconciliation_status: 'matched',
-                notes: `Auto-matched: Receipt from ${receivable.customers?.company_name || 'Customer'} - ${receivable.notes || ''}`,
-              })
-              .eq('id', line.id);
-            matched = true;
-            creditMatched++;
-          }
-
-        }
-
-        if (matched) matchCount++;
-      }
+      const result = data?.[0];
+      const matchedCount = result?.matched_count || 0;
+      const suggestedCount = result?.suggested_count || 0;
+      const skippedCount = result?.skipped_count || 0;
 
       await loadStatementLines();
-      alert(`✅ Auto-match complete!\n\nMatched: ${matchCount} / ${lines.length}\n- Debits (OUT): ${debitMatched}\n- Credits (IN): ${creditMatched}`);
+
+      let message = `✅ Auto-match complete!\n\n`;
+      message += `✓ Matched (85%+ confidence): ${matchedCount}\n`;
+      message += `⚠ Needs Review (70-84%): ${suggestedCount}\n`;
+      if (skippedCount > 0) {
+        message += `⏭ Skipped (already matched): ${skippedCount}\n`;
+      }
+      message += `\n🔒 Date tolerance: ±7 days maximum`;
+
+      alert(message);
     } catch (err: any) {
       console.error('Error auto-matching:', err);
       alert('❌ Auto-match failed: ' + err.message);
