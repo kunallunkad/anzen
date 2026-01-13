@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Wallet, ArrowDownCircle, ArrowUpCircle, RefreshCw, Upload, X, FileText, Image, Eye, Edit2, Trash2, ExternalLink, Download } from 'lucide-react';
+import { Plus, Wallet, ArrowDownCircle, ArrowUpCircle, RefreshCw, Upload, X, FileText, Image, Eye, Edit2, Trash2, ExternalLink, Download, Clipboard } from 'lucide-react';
 import { Modal } from '../Modal';
 
 interface PettyCashDocument {
@@ -77,6 +77,7 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
   const [refreshing, setRefreshing] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<{file: File, type: string}[]>([]);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  const [showPasteHint, setShowPasteHint] = useState(false);
 
   const [formData, setFormData] = useState({
     transaction_type: 'expense' as 'withdraw' | 'expense',
@@ -140,6 +141,42 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
     const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
   }, [loadData]);
+
+  // Paste handler for images
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      if (!modalOpen) return;
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const pastedFiles: File[] = [];
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+
+        if (item.type.indexOf('image') !== -1) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          if (blob) {
+            const fileName = `pasted-image-${Date.now()}.png`;
+            const file = new File([blob], fileName, { type: blob.type });
+            pastedFiles.push(file);
+          }
+        }
+      }
+
+      if (pastedFiles.length > 0) {
+        const newFiles = pastedFiles.map(file => ({ file, type: 'photo' }));
+        setUploadingFiles(prev => [...prev, ...newFiles]);
+        setShowPasteHint(true);
+        setTimeout(() => setShowPasteHint(false), 2000);
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [modalOpen, uploadingFiles]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -838,7 +875,11 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   Proof Attachment
                 </label>
-                <label className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition">
+                <label
+                  className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition relative"
+                  onMouseEnter={() => setShowPasteHint(true)}
+                  onMouseLeave={() => setShowPasteHint(false)}
+                >
                   <FileText className="w-6 h-6 text-gray-400" />
                   <span className="text-xs text-gray-500 mt-1">Upload</span>
                   <input
@@ -853,7 +894,11 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   Bill/Invoice
                 </label>
-                <label className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition">
+                <label
+                  className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition relative"
+                  onMouseEnter={() => setShowPasteHint(true)}
+                  onMouseLeave={() => setShowPasteHint(false)}
+                >
                   <FileText className="w-6 h-6 text-gray-400" />
                   <span className="text-xs text-gray-500 mt-1">Upload</span>
                   <input
@@ -868,7 +913,11 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   Material Photo
                 </label>
-                <label className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition">
+                <label
+                  className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition relative"
+                  onMouseEnter={() => setShowPasteHint(true)}
+                  onMouseLeave={() => setShowPasteHint(false)}
+                >
                   <Image className="w-6 h-6 text-gray-400" />
                   <span className="text-xs text-gray-500 mt-1">Upload</span>
                   <input
@@ -880,6 +929,13 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
                 </label>
               </div>
             </div>
+
+            {showPasteHint && (
+              <div className="flex items-center justify-center gap-2 text-xs text-green-600 font-medium animate-pulse mt-2 py-2 bg-green-50 rounded-lg">
+                <Clipboard className="w-4 h-4" />
+                <span>Press Ctrl+V to paste images from clipboard (saved as Material Photo)</span>
+              </div>
+            )}
 
             {uploadingFiles.length > 0 && (
               <div className="flex flex-wrap gap-2 pt-2">
