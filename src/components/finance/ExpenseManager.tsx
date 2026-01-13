@@ -492,7 +492,13 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
 
       const { data, error } = await query;
       if (error) throw error;
-      setUnlinkedBankTransactions(data || []);
+
+      // Filter to only show debit transactions (expenses) with amount > 0
+      const debitTransactions = (data || []).filter(txn =>
+        txn.debit_amount && txn.debit_amount > 0
+      );
+
+      setUnlinkedBankTransactions(debitTransactions);
     } catch (error) {
       console.error('Error loading unlinked transactions:', error);
     }
@@ -1675,11 +1681,20 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                       >
                         <option value="">Choose a transaction...</option>
-                        {unlinkedBankTransactions.map((txn) => (
-                          <option key={txn.id} value={txn.id}>
-                            {txn.transaction_date} - {txn.description?.substring(0, 50) || 'No description'} - Rp {txn.debit_amount?.toLocaleString()}
-                          </option>
-                        ))}
+                        {unlinkedBankTransactions.map((txn) => {
+                          // Format date as DD/MM/YY
+                          const date = new Date(txn.transaction_date);
+                          const dd = String(date.getDate()).padStart(2, '0');
+                          const mm = String(date.getMonth() + 1).padStart(2, '0');
+                          const yy = String(date.getFullYear()).slice(-2);
+                          const formattedDate = `${dd}/${mm}/${yy}`;
+
+                          return (
+                            <option key={txn.id} value={txn.id}>
+                              {formattedDate} - {txn.description?.substring(0, 50) || 'No description'} - Rp {txn.debit_amount?.toLocaleString()}
+                            </option>
+                          );
+                        })}
                       </select>
                       <p className="text-xs text-gray-600 mt-1">
                         {unlinkedBankTransactions.length} unreconciled transaction{unlinkedBankTransactions.length !== 1 ? 's' : ''}

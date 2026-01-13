@@ -334,7 +334,8 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
 
   const loadExpenses = async () => {
     try {
-      const { data, error } = await supabase
+      // First, get all expenses
+      const { data: allExpenses, error } = await supabase
         .from('finance_expenses')
         .select(`
           id,
@@ -348,7 +349,24 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
         .limit(200);
 
       if (error) throw error;
-      setExpenses(data || []);
+
+      // Then get all bank statement lines that have matched expenses
+      const { data: linkedStatements } = await supabase
+        .from('bank_statement_lines')
+        .select('matched_expense_id')
+        .not('matched_expense_id', 'is', null);
+
+      // Create a Set of linked expense IDs for fast lookup
+      const linkedExpenseIds = new Set(
+        (linkedStatements || []).map(stmt => stmt.matched_expense_id)
+      );
+
+      // Filter to only show unlinked expenses
+      const unlinkedExpenses = (allExpenses || []).filter(
+        expense => !linkedExpenseIds.has(expense.id)
+      );
+
+      setExpenses(unlinkedExpenses);
     } catch (err) {
       console.error('Error loading expenses:', err);
     }
@@ -2164,17 +2182,25 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
                         <option value="">
                           {expenses.length === 0 ? 'No expenses found' : 'Choose an expense...'}
                         </option>
-                        {expenses.map(expense => (
-                          <option key={expense.id} value={expense.id}>
-                            {expense.voucher_number ? `[${expense.voucher_number}] ` : ''}
-                            {new Date(expense.expense_date).toLocaleDateString('id-ID')} -
-                            {expense.description} -
-                            Rp {expense.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </option>
-                        ))}
+                        {expenses.map(expense => {
+                          // Format date as DD/MM/YY
+                          const date = new Date(expense.expense_date);
+                          const dd = String(date.getDate()).padStart(2, '0');
+                          const mm = String(date.getMonth() + 1).padStart(2, '0');
+                          const yy = String(date.getFullYear()).slice(-2);
+                          const formattedDate = `${dd}/${mm}/${yy}`;
+
+                          return (
+                            <option key={expense.id} value={expense.id}>
+                              {formattedDate} - {expense.voucher_number ? `[${expense.voucher_number}] ` : ''}
+                              {expense.description} -
+                              Rp {expense.amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </option>
+                          );
+                        })}
                       </select>
                       <p className="text-xs text-gray-500 mt-1">
-                        Showing {expenses.length} expenses. Match by voucher number or amount.
+                        Showing {expenses.length} unlinked expense{expenses.length !== 1 ? 's' : ''}. Match by voucher number or amount.
                       </p>
                     </div>
                     <button
