@@ -12,6 +12,7 @@ interface BankAccount {
   account_type: string;
   currency: string;
   opening_balance: number;
+  opening_balance_date: string;
   current_balance: number;
   is_active: boolean;
   alias?: string;
@@ -33,6 +34,7 @@ export function BankAccountsManager({ canManage }: Props) {
     account_type: 'current' as 'savings' | 'current' | 'credit_card' | 'other',
     currency: 'IDR',
     opening_balance: 0,
+    opening_balance_date: '2025-01-01',
     alias: '',
   });
 
@@ -100,6 +102,7 @@ export function BankAccountsManager({ canManage }: Props) {
       account_type: account.account_type as any,
       currency: account.currency,
       opening_balance: account.opening_balance,
+      opening_balance_date: account.opening_balance_date || '2025-01-01',
       alias: account.alias || '',
     });
     setModalOpen(true);
@@ -114,6 +117,7 @@ export function BankAccountsManager({ canManage }: Props) {
       account_type: 'current',
       currency: 'IDR',
       opening_balance: 0,
+      opening_balance_date: '2025-01-01',
       alias: '',
     });
   };
@@ -253,6 +257,18 @@ export function BankAccountsManager({ canManage }: Props) {
                 placeholder="0"
               />
               <p className="text-xs text-gray-500 mt-1">Leave blank if opening balance is zero</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Opening Balance Date *</label>
+              <input
+                type="date"
+                value={formData.opening_balance_date}
+                onChange={(e) => setFormData({ ...formData, opening_balance_date: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">Date when the opening balance is effective</p>
             </div>
           </div>
 
