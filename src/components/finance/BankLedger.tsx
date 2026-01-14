@@ -8,6 +8,7 @@ interface BankAccount {
   account_number: string;
   currency: string;
   opening_balance: number;
+  opening_balance_date: string;
 }
 
 interface LedgerEntry {
@@ -103,10 +104,35 @@ export default function BankLedger({ selectedBank: propSelectedBank }: BankLedge
     setLoading(true);
     try {
       const selectedBankData = banks.find(b => b.id === selectedBank);
-      const opening = selectedBankData?.opening_balance || 0;
-      setOpeningBalance(opening);
+      const storedOpeningBalance = selectedBankData?.opening_balance || 0;
+      const openingBalanceDate = selectedBankData?.opening_balance_date || '2025-01-01';
 
       console.log('📊 Loading ledger for bank:', selectedBankData?.bank_name, selectedBankData?.account_number, 'ID:', selectedBank);
+      console.log('💰 Opening Balance:', storedOpeningBalance, 'as of', openingBalanceDate);
+      console.log('📅 Date Range:', dateRange.start, 'to', dateRange.end);
+
+      // Calculate the effective opening balance for the filtered period
+      let effectiveOpeningBalance = storedOpeningBalance;
+
+      // If filter starts after the opening balance date, calculate balance up to filter start
+      if (dateRange.start > openingBalanceDate) {
+        console.log('🔄 Calculating opening balance from', openingBalanceDate, 'to', dateRange.start);
+
+        // Get all transactions between opening_balance_date and filter start date (exclusive)
+        const { data: priorTransactions } = await supabase.rpc('calculate_balance_between_dates', {
+          p_bank_account_id: selectedBank,
+          p_start_date: openingBalanceDate,
+          p_end_date: dateRange.start
+        });
+
+        if (priorTransactions && priorTransactions.length > 0) {
+          const netChange = priorTransactions[0].net_change || 0;
+          effectiveOpeningBalance = storedOpeningBalance + netChange;
+          console.log('✅ Net change:', netChange, '→ Effective opening balance:', effectiveOpeningBalance);
+        }
+      }
+
+      setOpeningBalance(effectiveOpeningBalance);
 
       const entries: any[] = [];
 
@@ -226,7 +252,7 @@ export default function BankLedger({ selectedBank: propSelectedBank }: BankLedge
       // Sort by date
       entries.sort((a, b) => new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime());
 
-      let runningBalance = opening;
+      let runningBalance = effectiveOpeningBalance;
       const ledger: LedgerEntry[] = entries.map((entry: any) => {
         const debit = entry.debit || 0;
         const credit = entry.credit || 0;
