@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Upload, RefreshCw, CheckCircle2, AlertCircle, XCircle, Plus, Calendar, Landmark } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -18,8 +18,9 @@ interface StatementLine {
   debit: number;
   credit: number;
   balance: number;
-  status: 'matched' | 'suggested' | 'unmatched' | 'created';
+  status: 'matched' | 'needs_review' | 'unmatched' | 'recorded';
   matchedEntry?: string;
+  notes?: string;
 }
 
 interface BankReconciliationProps {
@@ -32,7 +33,7 @@ export function BankReconciliation({ canManage }: BankReconciliationProps) {
   const [statementLines, setStatementLines] = useState<StatementLine[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'matched' | 'suggested' | 'unmatched'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'matched' | 'needs_review' | 'unmatched' | 'no_link'>('all');
   const [dateRange, setDateRange] = useState({
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0],
@@ -69,12 +70,17 @@ export function BankReconciliation({ canManage }: BankReconciliationProps) {
     if (!selectedBank) return;
     setLoading(true);
     try {
+      // Calculate next day for inclusive end date filtering
+      const endDatePlusOne = new Date(dateRange.end);
+      endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
+      const endDateStr = endDatePlusOne.toISOString().split('T')[0];
+
       const { data, error } = await supabase
         .from('bank_statement_lines')
         .select('*')
         .eq('bank_account_id', selectedBank)
         .gte('transaction_date', dateRange.start)
-        .lte('transaction_date', dateRange.end)
+        .lt('transaction_date', endDateStr)
         .order('transaction_date', { ascending: false });
       
       if (error) throw error;
@@ -89,6 +95,7 @@ export function BankReconciliation({ canManage }: BankReconciliationProps) {
         balance: row.running_balance || 0,
         status: row.reconciliation_status || 'unmatched',
         matchedEntry: row.matched_entry_id,
+        notes: row.notes || '',
       }));
       setStatementLines(lines);
     } catch (err) {
@@ -122,7 +129,7 @@ export function BankReconciliation({ canManage }: BankReconciliationProps) {
           }
 
           const { data: { user } } = await supabase.auth.getUser();
-          
+
           const insertData = lines.map(line => ({
             bank_account_id: selectedBank,
             transaction_date: line.date,
@@ -135,15 +142,31 @@ export function BankReconciliation({ canManage }: BankReconciliationProps) {
             created_by: user?.id,
           }));
 
-          const { error } = await supabase
+          // Insert transactions, skip duplicates based on transaction_hash
+          const { data: inserted, error } = await supabase
             .from('bank_statement_lines')
-            .insert(insertData);
+            .upsert(insertData, {
+              onConflict: 'transaction_hash',
+              ignoreDuplicates: true
+            })
+            .select();
 
-          if (error) throw error;
+          if (error) {
+            console.error('Insert error:', error);
+            throw error;
+          }
+
+          const insertedCount = inserted?.length || 0;
+          const duplicateCount = lines.length - insertedCount;
 
           await autoMatchTransactions();
           loadStatementLines();
-          alert(`Successfully imported ${lines.length} transactions`);
+
+          if (duplicateCount > 0) {
+            alert(`Successfully imported ${insertedCount} new transactions.\n${duplicateCount} duplicate transactions were skipped.`);
+          } else {
+            alert(`Successfully imported ${insertedCount} transactions`);
+          }
         } catch (err: any) {
           console.error('Error parsing file:', err);
           alert('Failed to parse file: ' + err.message);
@@ -225,50 +248,50 @@ export function BankReconciliation({ canManage }: BankReconciliationProps) {
     return lines;
   };
 
+  const calculateStringSimilarity = (str1: string, str2: string): number => {
+    if (!str1 || !str2) return 0;
+    const s1 = str1.toLowerCase().trim();
+    const s2 = str2.toLowerCase().trim();
+
+    if (s1 === s2) return 1;
+    if (s1.includes(s2) || s2.includes(s1)) return 0.8;
+
+    const words1 = s1.split(/\s+/);
+    const words2 = s2.split(/\s+/);
+    const commonWords = words1.filter(w => words2.includes(w)).length;
+    const totalWords = Math.max(words1.length, words2.length);
+
+    return commonWords / totalWords;
+  };
+
   const autoMatchTransactions = async () => {
     try {
-      const { data: unmatched, error: fetchError } = await supabase
-        .from('bank_statement_lines')
-        .select('*')
-        .eq('bank_account_id', selectedBank)
-        .eq('reconciliation_status', 'unmatched');
+      setLoading(true);
 
-      if (fetchError) throw fetchError;
-      if (!unmatched || unmatched.length === 0) return;
+      // Use the database function that enforces 7-day date tolerance
+      const { data, error } = await supabase.rpc('auto_match_smart');
 
-      const { data: journalEntries } = await supabase
-        .from('journal_entries')
-        .select('id, entry_number, entry_date, description, total_debit')
-        .eq('is_posted', true)
-        .gte('entry_date', dateRange.start)
-        .lte('entry_date', dateRange.end);
+      if (error) throw error;
 
-      const entries = journalEntries || [];
+      const result = data?.[0];
+      const matchedCount = result?.matched_count || 0;
+      const suggestedCount = result?.suggested_count || 0;
+      const skippedCount = result?.skipped_count || 0;
 
-      for (const line of unmatched) {
-        const amount = line.debit_amount || line.credit_amount;
-        const lineDate = new Date(line.transaction_date);
-
-        const match = entries.find(entry => {
-          const entryDate = new Date(entry.entry_date);
-          const dateDiff = Math.abs(lineDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24);
-          const amountMatch = Math.abs(entry.total_debit - amount) < 10000;
-          
-          return dateDiff <= 3 && amountMatch;
-        });
-
-        if (match) {
-          await supabase
-            .from('bank_statement_lines')
-            .update({
-              reconciliation_status: 'suggested',
-              matched_entry_id: match.id,
-            })
-            .eq('id', line.id);
-        }
+      let message = `✅ Auto-match complete!\n\n`;
+      message += `✓ Matched (85%+ confidence): ${matchedCount}\n`;
+      message += `⚠ Needs Review (70-84%): ${suggestedCount}\n`;
+      if (skippedCount > 0) {
+        message += `⏭ Skipped (already matched): ${skippedCount}\n`;
       }
+      message += `\n🔒 Date tolerance: ±7 days maximum`;
+
+      alert(message);
     } catch (err) {
       console.error('Error auto-matching:', err);
+      alert('Failed to auto-match transactions');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -301,12 +324,15 @@ export function BankReconciliation({ canManage }: BankReconciliationProps) {
 
   const filteredLines = statementLines.filter(line => {
     if (activeFilter === 'all') return true;
+    if (activeFilter === 'no_link') return !line.matchedEntry;
     return line.status === activeFilter;
   });
 
   const stats = {
     total: statementLines.length,
     matched: statementLines.filter(l => l.status === 'matched').length,
+    needsReview: statementLines.filter(l => l.status === 'needs_review').length,
+    noLink: statementLines.filter(l => !l.matchedEntry).length,
     suggested: statementLines.filter(l => l.status === 'suggested').length,
     unmatched: statementLines.filter(l => l.status === 'unmatched').length,
   };
@@ -373,7 +399,7 @@ export function BankReconciliation({ canManage }: BankReconciliationProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-5 gap-3">
         <button
           onClick={() => setActiveFilter('all')}
           className={`p-3 rounded-lg text-left transition ${
@@ -381,7 +407,7 @@ export function BankReconciliation({ canManage }: BankReconciliationProps) {
           }`}
         >
           <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-          <div className="text-xs text-gray-500">Total Transactions</div>
+          <div className="text-xs text-gray-500">Total</div>
         </button>
         <button
           onClick={() => setActiveFilter('matched')}
@@ -396,16 +422,16 @@ export function BankReconciliation({ canManage }: BankReconciliationProps) {
           <div className="text-xs text-gray-500">Matched</div>
         </button>
         <button
-          onClick={() => setActiveFilter('suggested')}
+          onClick={() => setActiveFilter('needs_review')}
           className={`p-3 rounded-lg text-left transition ${
-            activeFilter === 'suggested' ? 'bg-yellow-50 border-2 border-yellow-500' : 'bg-gray-50 border border-gray-200'
+            activeFilter === 'needs_review' ? 'bg-yellow-50 border-2 border-yellow-500' : 'bg-gray-50 border border-gray-200'
           }`}
         >
           <div className="flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-yellow-600" />
-            <span className="text-2xl font-bold text-yellow-700">{stats.suggested}</span>
+            <span className="text-2xl font-bold text-yellow-700">{stats.needsReview}</span>
           </div>
-          <div className="text-xs text-gray-500">Suggested Match</div>
+          <div className="text-xs text-gray-500">Review</div>
         </button>
         <button
           onClick={() => setActiveFilter('unmatched')}
@@ -418,6 +444,15 @@ export function BankReconciliation({ canManage }: BankReconciliationProps) {
             <span className="text-2xl font-bold text-red-700">{stats.unmatched}</span>
           </div>
           <div className="text-xs text-gray-500">Unmatched</div>
+        </button>
+        <button
+          onClick={() => setActiveFilter('no_link')}
+          className={`p-3 rounded-lg text-left transition ${
+            activeFilter === 'no_link' ? 'bg-purple-50 border-2 border-purple-500' : 'bg-gray-50 border border-gray-200'
+          }`}
+        >
+          <div className="text-2xl font-bold text-purple-700">{stats.noLink}</div>
+          <div className="text-xs text-gray-500">Not Linked</div>
         </button>
       </div>
 
@@ -452,76 +487,93 @@ export function BankReconciliation({ canManage }: BankReconciliationProps) {
                 <th className="px-3 py-2 text-left font-medium text-gray-600">Reference</th>
                 <th className="px-3 py-2 text-right font-medium text-gray-600">Debit</th>
                 <th className="px-3 py-2 text-right font-medium text-gray-600">Credit</th>
+                <th className="px-3 py-2 text-right font-medium text-gray-600">Balance</th>
                 <th className="px-3 py-2 text-center font-medium text-gray-600">Status</th>
                 <th className="px-3 py-2 text-center font-medium text-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredLines.map(line => (
-                <tr key={line.id} className="hover:bg-gray-50">
-                  <td className="px-3 py-2 text-gray-700">
-                    {new Date(line.date).toLocaleDateString('id-ID')}
-                  </td>
-                  <td className="px-3 py-2 text-gray-700 max-w-xs truncate">{line.description}</td>
-                  <td className="px-3 py-2 text-gray-500 font-mono text-xs">{line.reference || '-'}</td>
-                  <td className="px-3 py-2 text-right text-red-600 font-medium">
-                    {line.debit > 0 ? `Rp ${line.debit.toLocaleString('id-ID')}` : '-'}
-                  </td>
-                  <td className="px-3 py-2 text-right text-green-600 font-medium">
-                    {line.credit > 0 ? `Rp ${line.credit.toLocaleString('id-ID')}` : '-'}
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    {line.status === 'matched' && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                        <CheckCircle2 className="w-3 h-3" /> Matched
-                      </span>
-                    )}
-                    {line.status === 'suggested' && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-                        <AlertCircle className="w-3 h-3" /> Review
-                      </span>
-                    )}
-                    {line.status === 'unmatched' && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                        <XCircle className="w-3 h-3" /> Unmatched
-                      </span>
-                    )}
-                    {line.status === 'created' && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                        <Plus className="w-3 h-3" /> Created
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    {line.status === 'suggested' && (
-                      <div className="flex items-center justify-center gap-1">
+                <React.Fragment key={line.id}>
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-gray-700">
+                      {new Date(line.date).toLocaleDateString('id-ID')}
+                    </td>
+                    <td className="px-3 py-2 text-gray-700 max-w-xs truncate">{line.description}</td>
+                    <td className="px-3 py-2 text-gray-500 font-mono text-xs">{line.reference || '-'}</td>
+                    <td className="px-3 py-2 text-right text-red-600 font-medium">
+                      {line.debit > 0 ? `Rp ${line.debit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+                    </td>
+                    <td className="px-3 py-2 text-right text-green-600 font-medium">
+                      {line.credit > 0 ? `Rp ${line.credit.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+                    </td>
+                    <td className="px-3 py-2 text-right text-gray-900 font-semibold">
+                      Rp {line.balance.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      {line.status === 'matched' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                          <CheckCircle2 className="w-3 h-3" /> Matched
+                        </span>
+                      )}
+                      {line.status === 'needs_review' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                          <AlertCircle className="w-3 h-3" /> Review
+                        </span>
+                      )}
+                      {line.status === 'unmatched' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                          <XCircle className="w-3 h-3" /> Unmatched
+                        </span>
+                      )}
+                      {line.status === 'recorded' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                          <Plus className="w-3 h-3" /> Recorded
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      {line.status === 'needs_review' && (
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => confirmMatch(line.id)}
+                            className="p-1 text-green-600 hover:bg-green-50 rounded"
+                            title="Confirm Match"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => rejectMatch(line.id)}
+                            className="p-1 text-red-600 hover:bg-red-50 rounded"
+                            title="Reject Match"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                      {line.status === 'unmatched' && canManage && (
                         <button
-                          onClick={() => confirmMatch(line.id)}
-                          className="p-1 text-green-600 hover:bg-green-50 rounded"
-                          title="Confirm Match"
+                          className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                          title="Create Entry"
                         >
-                          <CheckCircle2 className="w-4 h-4" />
+                          <Plus className="w-3 h-3" />
+                          Create
                         </button>
-                        <button
-                          onClick={() => rejectMatch(line.id)}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded"
-                          title="Reject Match"
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                    {line.status === 'unmatched' && canManage && (
-                      <button
-                        className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                        title="Create Entry"
-                      >
-                        <Plus className="w-3 h-3" />
-                        Create
-                      </button>
-                    )}
-                  </td>
-                </tr>
+                      )}
+                    </td>
+                  </tr>
+                  {line.notes && (line.status === 'matched' || line.status === 'needs_review') && (
+                    <tr className="bg-blue-50">
+                      <td colSpan={7} className="px-3 py-1.5">
+                        <div className="flex items-center gap-2 text-xs text-blue-800">
+                          <AlertCircle className="w-3 h-3" />
+                          <span className="font-medium">Match Info:</span>
+                          <span>{line.notes}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>

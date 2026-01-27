@@ -18,14 +18,15 @@ interface Supplier {
 interface Product {
   id: string;
   product_name: string;
+  generic_name: string | null;
   unit: string;
   current_stock: number;
 }
 
 interface ChartOfAccount {
   id: string;
-  code: string;
-  name: string;
+  account_code: string;
+  account_name: string;
   account_type: string;
 }
 
@@ -144,7 +145,7 @@ export function PurchaseInvoiceManager({ canManage }: PurchaseInvoiceManagerProp
   const loadProducts = async () => {
     const { data } = await supabase
       .from('products')
-      .select('id, product_name, unit, current_stock')
+      .select('id, product_name, generic_name, unit, current_stock')
       .order('product_name');
     setProducts(data || []);
   };
@@ -152,9 +153,9 @@ export function PurchaseInvoiceManager({ canManage }: PurchaseInvoiceManagerProp
   const loadAccounts = async () => {
     const { data } = await supabase
       .from('chart_of_accounts')
-      .select('id, code, name, account_type')
+      .select('id, account_code, account_name, account_type')
       .in('account_type', ['Expense', 'Asset', 'Cost of Goods Sold'])
-      .order('code');
+      .order('account_code');
     setAccounts(data || []);
   };
 
@@ -781,7 +782,7 @@ export function PurchaseInvoiceManager({ canManage }: PurchaseInvoiceManagerProp
                           <option value="">Select Account</option>
                           {accounts.filter(a => a.account_type === 'Expense' || a.account_type === 'Cost of Goods Sold').map((account) => (
                             <option key={account.id} value={account.id}>
-                              {account.code} - {account.name}
+                              {account.account_code} - {account.account_name}
                             </option>
                           ))}
                         </select>
@@ -799,7 +800,7 @@ export function PurchaseInvoiceManager({ canManage }: PurchaseInvoiceManagerProp
                           <option value="">Select Account</option>
                           {accounts.filter(a => a.account_type === 'Asset').map((account) => (
                             <option key={account.id} value={account.id}>
-                              {account.code} - {account.name}
+                              {account.account_code} - {account.account_name}
                             </option>
                           ))}
                         </select>
@@ -817,7 +818,7 @@ export function PurchaseInvoiceManager({ canManage }: PurchaseInvoiceManagerProp
                           <option value="">Capitalize to Inventory (Default)</option>
                           {accounts.filter(a => a.account_type === 'Expense' || a.account_type === 'Cost of Goods Sold').map((account) => (
                             <option key={account.id} value={account.id}>
-                              {account.code} - {account.name}
+                              {account.account_code} - {account.account_name}
                             </option>
                           ))}
                         </select>

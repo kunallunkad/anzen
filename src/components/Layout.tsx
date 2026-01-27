@@ -115,9 +115,11 @@ export function Layout({ children }: LayoutProps) {
             const Icon = item.icon;
             const isActive = currentPage === item.id;
             return (
-              <button
+              <a
                 key={item.id}
-                onClick={() => {
+                href={`#${item.id}`}
+                onClick={(e) => {
+                  e.preventDefault();
                   setCurrentPage(item.id);
                   setSidebarOpen(false);
                 }}
@@ -138,7 +140,7 @@ export function Layout({ children }: LayoutProps) {
                     {item.label}
                   </span>
                 )}
-              </button>
+              </a>
             );
           })}
         </nav>

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Bell, X, CheckCheck, AlertTriangle, Clock, Package, FileText, CheckSquare, MessageSquare, AtSign } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { showToast } from './ToastNotification';
 
 interface Notification {
   id: string;
@@ -19,28 +20,62 @@ export function NotificationDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { user } = useAuth();
+  const previousNotificationIds = useRef<Set<string>>(new Set());
+  const sessionKey = `notification_session_${user?.id}`;
 
   useEffect(() => {
     if (user) {
-      loadNotifications();
-      const interval = setInterval(loadNotifications, 60000);
+      const hasShownThisSession = sessionStorage.getItem(sessionKey);
+      loadNotifications(!hasShownThisSession);
+
+      const interval = setInterval(() => loadNotifications(false), 60000);
       return () => clearInterval(interval);
     }
   }, [user]);
 
-  const loadNotifications = async () => {
+  const loadNotifications = async (showToasts: boolean = false) => {
     try {
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user?.id)
+        .eq('is_read', false)
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (error) throw error;
 
-      setNotifications(data || []);
-      setUnreadCount(data?.filter(n => !n.is_read).length || 0);
+      const newNotifications = data || [];
+      setNotifications(newNotifications);
+      setUnreadCount(newNotifications.length || 0);
+
+      if (showToasts) {
+        sessionStorage.setItem(sessionKey, 'true');
+        newNotifications.forEach(notif => {
+          if (!notif.is_read && !previousNotificationIds.current.has(notif.id)) {
+            if (notif.type === 'appointment') {
+              showToast({
+                type: 'appointment',
+                title: notif.title,
+                message: notif.message,
+                duration: 8000
+              });
+            } else {
+              showToast({
+                type: 'info',
+                title: notif.title,
+                message: notif.message,
+                duration: 6000
+              });
+            }
+          }
+          previousNotificationIds.current.add(notif.id);
+        });
+      } else {
+        newNotifications.forEach(notif => {
+          previousNotificationIds.current.add(notif.id);
+        });
+      }
     } catch (error) {
       console.error('Error loading notifications:', error);
     }
@@ -77,6 +112,8 @@ export function NotificationDropdown() {
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
+      case 'appointment':
+        return <Clock className="w-5 h-5 text-blue-600" />;
       case 'low_stock':
         return <AlertTriangle className="w-5 h-5 text-orange-600" />;
       case 'near_expiry':
