@@ -961,48 +961,31 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
           {formData.transaction_type === 'expense' && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Expense Category <span className="text-red-500">*</span>
                 </label>
-                <div className="space-y-2 max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                <select
+                  value={formData.expense_category}
+                  onChange={(e) => setFormData({ ...formData, expense_category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select expense category...</option>
                   {Object.entries(groupedCategories).map(([group, categories]) => (
-                    <div key={group} className="space-y-1">
-                      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2 py-1 bg-gray-50">
-                        {group}
-                      </div>
-                      {categories.map((cat) => {
-                        const Icon = cat.icon;
-                        return (
-                          <label
-                            key={cat.value}
-                            className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                              formData.expense_category === cat.value
-                                ? 'bg-blue-50 border-2 border-blue-500'
-                                : 'hover:bg-gray-50 border-2 border-transparent'
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name="expense_category"
-                              value={cat.value}
-                              checked={formData.expense_category === cat.value}
-                              onChange={(e) => setFormData({ ...formData, expense_category: e.target.value })}
-                              className="mt-1"
-                            />
-                            <Icon className="h-5 w-5 text-gray-400 flex-shrink-0 mt-0.5" />
-                            <div className="flex-1">
-                              <div className="font-medium text-gray-900">{cat.label}</div>
-                              <div className="text-xs text-gray-600 mt-0.5">{cat.description}</div>
-                              {cat.requiresContainer && (
-                                <div className="text-xs text-orange-600 mt-1 font-medium">⚠️ Requires Container Link</div>
-                              )}
-                            </div>
-                          </label>
-                        );
-                      })}
-                    </div>
+                    <optgroup key={group} label={group}>
+                      {categories.map((cat) => (
+                        <option key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
-                </div>
+                </select>
+                {formData.expense_category && selectedCategory && (
+                  <p className="mt-1 text-xs text-gray-600">
+                    {selectedCategory.description}
+                  </p>
+                )}
               </div>
 
               {selectedCategory?.requiresContainer && (
