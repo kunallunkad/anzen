@@ -1318,82 +1318,90 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
               </div>
             </div>
 
-            {/* Compact 2-Column Grid */}
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 py-2 border-b border-gray-200">
-              <div>
-                <p className="text-xs text-gray-500 mb-0.5">Type</p>
-                <div className="flex items-center gap-1">
-                  {viewingTransaction.transaction_type === 'withdraw' ? (
-                    <>
-                      <ArrowDownCircle className="h-3.5 w-3.5 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-900">Withdrawal</span>
-                    </>
-                  ) : (
-                    <>
-                      <ArrowUpCircle className="h-3.5 w-3.5 text-red-600" />
-                      <span className="text-sm font-medium text-red-900">Expense</span>
-                    </>
+            {/* Type, Category, Amount - All in one line */}
+            <div className="py-2 border-b border-gray-200">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">Type</p>
+                    <div className="flex items-center gap-1">
+                      {viewingTransaction.transaction_type === 'withdraw' ? (
+                        <>
+                          <ArrowDownCircle className="h-3.5 w-3.5 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-900">Withdrawal</span>
+                        </>
+                      ) : (
+                        <>
+                          <ArrowUpCircle className="h-3.5 w-3.5 text-red-600" />
+                          <span className="text-sm font-medium text-red-900">Expense</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {viewingTransaction.expense_category && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-0.5">Category</p>
+                      <div className="flex items-center gap-1.5">
+                        {(() => {
+                          const categoryInfo = getCategoryInfo(viewingTransaction.expense_category);
+                          const Icon = categoryInfo?.icon;
+                          return (
+                            <>
+                              {Icon && <Icon className="h-4 w-4 text-amber-600" />}
+                              <span className="text-sm font-medium text-gray-900">{categoryInfo?.label}</span>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
                   )}
                 </div>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-0.5">Amount</p>
-                <p className="text-lg font-bold text-gray-900">
-                  Rp {Number(viewingTransaction.amount).toLocaleString('id-ID')}
-                </p>
-              </div>
-            </div>
 
-            {/* Category */}
-            {viewingTransaction.expense_category && (
-              <div className="py-2 border-b border-gray-200">
-                <p className="text-xs text-gray-500 mb-1">Category</p>
-                <div className="flex items-center gap-1.5">
-                  {(() => {
-                    const categoryInfo = getCategoryInfo(viewingTransaction.expense_category);
-                    const Icon = categoryInfo?.icon;
-                    return (
-                      <>
-                        {Icon && <Icon className="h-4 w-4 text-amber-600" />}
-                        <span className="text-sm font-medium text-gray-900">{categoryInfo?.label}</span>
-                      </>
-                    );
-                  })()}
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Amount</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    Rp {Number(viewingTransaction.amount).toLocaleString('id-ID')}
+                  </p>
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Description */}
             <div className="py-2 border-b border-gray-200">
               <p className="text-xs text-gray-500 mb-1">Description</p>
-              <p className="text-sm text-gray-900">{viewingTransaction.description}</p>
+              <p className="text-sm font-semibold text-gray-900">{viewingTransaction.description}</p>
             </div>
 
-            {/* Payment Details - Compact Grid */}
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 py-2 border-b border-gray-200">
-              {viewingTransaction.paid_to && (
-                <>
-                  <p className="text-xs text-gray-500">Paid To</p>
-                  <p className="text-sm font-medium text-gray-900">{viewingTransaction.paid_to}</p>
-                </>
-              )}
-              {viewingTransaction.paid_by_staff_name && (
-                <>
-                  <p className="text-xs text-gray-500">Paid By</p>
-                  <p className="text-sm font-medium text-gray-900">{viewingTransaction.paid_by_staff_name}</p>
-                </>
+            {/* Payment Details - Compact */}
+            <div className="py-2 border-b border-gray-200 space-y-1.5">
+              {(viewingTransaction.paid_to || viewingTransaction.paid_by_staff_name) && (
+                <div className="flex items-center gap-4 flex-wrap">
+                  {viewingTransaction.paid_to && (
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs text-gray-500">Paid To:</p>
+                      <p className="text-sm font-medium text-gray-900">{viewingTransaction.paid_to}</p>
+                    </div>
+                  )}
+                  {viewingTransaction.paid_by_staff_name && (
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs text-gray-500">Paid By:</p>
+                      <p className="text-sm font-medium text-gray-900">{viewingTransaction.paid_by_staff_name}</p>
+                    </div>
+                  )}
+                </div>
               )}
               {viewingTransaction.received_by_staff_name && (
-                <>
-                  <p className="text-xs text-gray-500">Received By</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs text-gray-500">Received By:</p>
                   <p className="text-sm font-medium text-gray-900">{viewingTransaction.received_by_staff_name}</p>
-                </>
+                </div>
               )}
               {viewingTransaction.source && (
-                <>
-                  <p className="text-xs text-gray-500">Source</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs text-gray-500">Source:</p>
                   <p className="text-sm font-medium text-gray-900">{viewingTransaction.source}</p>
-                </>
+                </div>
               )}
             </div>
 
@@ -1442,7 +1450,7 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
                       rel="noopener noreferrer"
                       className="group relative border border-gray-200 rounded overflow-hidden hover:border-blue-500 transition-colors"
                     >
-                      {doc.file_type.startsWith('image/') ? (
+                      {doc.file_type === 'photo' ? (
                         <div className="aspect-square bg-gray-100 relative">
                           <img
                             src={doc.file_url}
