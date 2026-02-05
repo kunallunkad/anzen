@@ -26,8 +26,14 @@ import {
   RotateCcw,
   AlertTriangle,
   ClipboardList,
+  Sparkles,
 } from 'lucide-react';
 import logo from '../assets/Untitled-1.svg';
+
+interface Quote {
+  content: string;
+  author: string;
+}
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -38,10 +44,36 @@ export function Layout({ children }: LayoutProps) {
   const { profile, signOut } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const { currentPage, setCurrentPage, sidebarCollapsed, setSidebarCollapsed } = useNavigation();
+  const [quote, setQuote] = useState<Quote>({ content: 'Welcome back!', author: '' });
+  const [isLoadingQuote, setIsLoadingQuote] = useState(false);
 
   // Auto-collapse sidebar for specific pages
   const autoCollapsiblePages = ['crm', 'command-center', 'finance'];
   const shouldAutoCollapse = autoCollapsiblePages.includes(currentPage);
+
+  // Fetch quote of the day
+  const fetchQuote = async () => {
+    try {
+      setIsLoadingQuote(true);
+      const response = await fetch('https://api.quotable.io/random?minLength=40&maxLength=120');
+      const data = await response.json();
+      setQuote({
+        content: data.content,
+        author: data.author
+      });
+    } catch (error) {
+      console.error('Error fetching quote:', error);
+    } finally {
+      setIsLoadingQuote(false);
+    }
+  };
+
+  // Fetch quote on mount and rotate every 5 minutes
+  useEffect(() => {
+    fetchQuote();
+    const interval = setInterval(fetchQuote, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Automatically collapse sidebar when entering CRM or Command Center
   useEffect(() => {
@@ -167,7 +199,26 @@ export function Layout({ children }: LayoutProps) {
               )}
             </div>
 
-            <div className="flex-1" />
+            <div className="flex-1 hidden md:flex items-center justify-center px-4">
+              <div className="text-center max-w-2xl">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <span className="text-sm font-medium text-gray-700">
+                    Welcome, <span className="text-blue-600">{profile?.full_name || profile?.username || 'User'}</span>
+                  </span>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-xs text-gray-500 italic">
+                  <Sparkles className="w-3 h-3 text-yellow-500 flex-shrink-0" />
+                  <p className="line-clamp-1">
+                    {isLoadingQuote ? 'Loading inspiration...' : `"${quote.content}"`}
+                  </p>
+                </div>
+                {quote.author && !isLoadingQuote && (
+                  <p className="text-xs text-gray-400 mt-0.5">- {quote.author}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex-1 md:hidden" />
 
             <div className="flex items-center gap-3">
               <NotificationDropdown />
