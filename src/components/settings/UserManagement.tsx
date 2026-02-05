@@ -93,16 +93,30 @@ export function UserManagement({ users, onRefresh }: UserManagementProps) {
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({
-          username: formData.username.toLowerCase(),
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/admin-update-user`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: editingUser.id,
+          email: formData.email,
+          username: formData.username,
           full_name: formData.full_name,
           role: formData.role,
-        })
-        .eq('id', editingUser.id);
+        }),
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update user');
+      }
 
       alert(`User ${formData.full_name} updated successfully!`);
       setShowEditModal(false);
@@ -543,9 +557,9 @@ export function UserManagement({ users, onRefresh }: UserManagementProps) {
         title="Edit User"
       >
         <form onSubmit={handleEditUser} className="space-y-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-            <p className="text-sm text-amber-800">
-              Editing user profile. Email cannot be changed. To reset password, user must use password reset feature.
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-blue-800">
+              You can edit all user details including email. To reset password, use the password reset button from the user list.
             </p>
           </div>
 
@@ -586,16 +600,18 @@ export function UserManagement({ users, onRefresh }: UserManagementProps) {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
               <Mail className="w-4 h-4" />
-              Email Address
+              Email Address <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
               value={formData.email}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
-              disabled
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="john@example.com"
+              required
             />
             <p className="text-xs text-gray-500 mt-1">
-              Email cannot be changed
+              Email address can now be updated
             </p>
           </div>
 
