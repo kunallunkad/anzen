@@ -83,35 +83,14 @@ export function Layout({ children }: LayoutProps) {
   const { language, setLanguage, t } = useLanguage();
   const { currentPage, setCurrentPage, sidebarCollapsed, setSidebarCollapsed } = useNavigation();
   const [quote, setQuote] = useState<Quote>({ content: 'Welcome back!', author: '' });
-  const [isLoadingQuote, setIsLoadingQuote] = useState(false);
 
   // Auto-collapse sidebar for specific pages
   const autoCollapsiblePages = ['crm', 'command-center', 'finance'];
   const shouldAutoCollapse = autoCollapsiblePages.includes(currentPage);
 
-  // Fetch quote of the day
-  const fetchQuote = async () => {
-    try {
-      setIsLoadingQuote(true);
-      const response = await fetch('https://api.quotable.io/random?minLength=40&maxLength=120', {
-        signal: AbortSignal.timeout(5000)
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setQuote({
-          content: data.content,
-          author: data.author
-        });
-      } else {
-        setQuote(getRandomFallbackQuote());
-      }
-    } catch (error) {
-      console.error('Error fetching quote, using fallback:', error);
-      setQuote(getRandomFallbackQuote());
-    } finally {
-      setIsLoadingQuote(false);
-    }
+  // Use fallback quotes only (removed external API to clean console)
+  const fetchQuote = () => {
+    setQuote(getRandomFallbackQuote());
   };
 
   // Fetch quote on mount and rotate every 5 minutes

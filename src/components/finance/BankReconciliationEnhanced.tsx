@@ -723,7 +723,18 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !selectedBank || !selectedAccount) return;
+    if (!file) {
+      alert('❌ No file selected');
+      return;
+    }
+    if (!selectedBank) {
+      alert('❌ Please select a bank account first');
+      return;
+    }
+    if (!selectedAccount) {
+      alert('❌ Bank account not loaded. Please refresh the page.');
+      return;
+    }
 
     setUploading(true);
     try {
