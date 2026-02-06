@@ -144,7 +144,7 @@ export default function SalesOrders() {
       setSalesOrders(data || []);
     } catch (error: any) {
       console.error('Error fetching sales orders:', error.message);
-      alert('Failed to load sales orders');
+      alert(t('errors.failedToLoadSalesOrders'));
     } finally {
       setLoading(false);
     }
@@ -192,17 +192,17 @@ export default function SalesOrders() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; label: string }> = {
-      draft: { color: 'bg-gray-100 text-gray-800', label: 'Draft' },
-      pending_approval: { color: 'bg-yellow-100 text-yellow-800', label: 'Pending Approval' },
-      approved: { color: 'bg-green-100 text-green-800', label: 'Approved' },
-      rejected: { color: 'bg-red-100 text-red-800', label: 'Rejected' },
-      stock_reserved: { color: 'bg-blue-100 text-blue-800', label: 'Stock Reserved' },
+      draft: { color: 'bg-gray-100 text-gray-800', label: t('common.draft') },
+      pending_approval: { color: 'bg-yellow-100 text-yellow-800', label: t('common.pending') },
+      approved: { color: 'bg-green-100 text-green-800', label: t('common.approved') },
+      rejected: { color: 'bg-red-100 text-red-800', label: t('common.rejected') },
+      stock_reserved: { color: 'bg-blue-100 text-blue-800', label: t('stock.reserved') },
       shortage: { color: 'bg-orange-100 text-orange-800', label: 'Shortage' },
       pending_delivery: { color: 'bg-purple-100 text-purple-800', label: 'Pending Delivery' },
       partially_delivered: { color: 'bg-indigo-100 text-indigo-800', label: 'Partially Delivered' },
       delivered: { color: 'bg-teal-100 text-teal-800', label: 'Delivered' },
       closed: { color: 'bg-gray-100 text-gray-800', label: 'Closed' },
-      cancelled: { color: 'bg-red-100 text-red-800', label: 'Cancelled' },
+      cancelled: { color: 'bg-red-100 text-red-800', label: t('common.cancelled') },
     };
 
     const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800', label: status };
@@ -214,7 +214,7 @@ export default function SalesOrders() {
   };
 
   const handleSubmitForApproval = async (orderId: string) => {
-    if (!confirm('Submit this sales order for approval?')) return;
+    if (!confirm(t('salesOrders.submitForApproval') + '?')) return;
 
     try {
       const { error } = await supabase
@@ -224,17 +224,17 @@ export default function SalesOrders() {
 
       if (error) throw error;
 
-      alert('Sales order submitted for approval successfully!');
+      alert(t('success.salesOrderSubmitted'));
       fetchSalesOrders();
     } catch (error: any) {
       console.error('Error submitting for approval:', error.message);
-      alert('Failed to submit for approval');
+      alert(t('errors.failedToUpdate'));
     }
   };
 
   const handleArchiveOrder = async () => {
     if (!orderToArchive || !archiveReason.trim()) {
-      alert('Please enter an archive reason');
+      alert(t('validation.enterArchiveReason'));
       return;
     }
 
@@ -255,19 +255,19 @@ export default function SalesOrders() {
 
       if (error) throw error;
 
-      alert('Sales order archived successfully!');
+      alert(t('success.salesOrderArchived'));
       setShowArchiveModal(false);
       setArchiveReason('');
       setOrderToArchive(null);
       fetchSalesOrders();
     } catch (error: any) {
       console.error('Error archiving order:', error.message);
-      alert('Failed to archive order');
+      alert(t('errors.failedToUpdate'));
     }
   };
 
   const handleUnarchiveOrder = async (orderId: string) => {
-    if (!confirm('Unarchive this sales order?')) return;
+    if (!confirm(t('common.unarchive') + '?')) return;
 
     try {
       const { error } = await supabase
@@ -283,11 +283,11 @@ export default function SalesOrders() {
 
       if (error) throw error;
 
-      alert('Sales order unarchived successfully!');
+      alert(t('success.salesOrderUnarchived'));
       fetchSalesOrders();
     } catch (error: any) {
       console.error('Error unarchiving order:', error.message);
-      alert('Failed to unarchive order');
+      alert(t('errors.failedToUpdate'));
     }
   };
 
@@ -307,7 +307,7 @@ export default function SalesOrders() {
 
       if (error) throw error;
 
-      alert('Sales order cancelled successfully!');
+      alert(t('success.salesOrderCancelled'));
       fetchSalesOrders();
     } catch (error: any) {
       console.error('Error cancelling order:', error.message);
@@ -503,7 +503,7 @@ export default function SalesOrders() {
       </div>
 
       <div className="bg-white rounded-lg shadow mb-6">
-        <div className="p-4 border-b flex gap-4">
+        <div className="p-4 border-b flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input

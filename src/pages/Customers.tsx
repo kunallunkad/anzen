@@ -92,7 +92,7 @@ export function Customers() {
       loadCustomers();
     } catch (error) {
       console.error('Error saving customer:', error);
-      alert('Failed to save customer');
+      alert(t('errors.failedToSaveCustomer'));
     }
   };
 
@@ -131,7 +131,7 @@ export function Customers() {
   };
 
   const handleDelete = async (customer: Customer) => {
-    if (!confirm('Are you sure you want to delete this customer?')) return;
+    if (!confirm(t('confirm.deleteCustomer'))) return;
 
     try {
       const { error } = await supabase
@@ -143,7 +143,7 @@ export function Customers() {
       loadCustomers();
     } catch (error) {
       console.error('Error deleting customer:', error);
-      alert('Failed to delete customer');
+      alert(t('errors.failedToDeleteCustomer'));
     }
   };
 
@@ -303,7 +303,7 @@ export function Customers() {
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                PBF License (No.Izin PBF)
+                {t('customers.pbfLicense')}
               </label>
               <input
                 type="text"

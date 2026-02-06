@@ -224,7 +224,10 @@ function FinanceContent() {
       <div className="flex h-screen bg-gray-50">
         {/* Left Sidebar - Compact Menu */}
         {!sidebarCollapsed && (
-          <div className="w-48 bg-white border-r border-gray-200 flex flex-col">
+          <div className="fixed inset-0 z-40 bg-black/30 md:hidden" onClick={() => setSidebarCollapsed(true)} />
+        )}
+        {!sidebarCollapsed && (
+          <div className="fixed inset-y-0 left-0 z-50 w-48 bg-white border-r border-gray-200 flex flex-col md:relative md:z-auto">
             {/* Menu Groups */}
             <div className="flex-1 overflow-y-auto">
               {financeMenu.map((group, groupIdx) => {
@@ -283,7 +286,7 @@ function FinanceContent() {
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Top Bar - Global Date Range ONLY */}
-          <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+          <div className="bg-white border-b border-gray-200 px-3 md:px-6 py-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -296,9 +299,9 @@ function FinanceContent() {
             </div>
 
             {/* SINGLE GLOBAL DATE RANGE */}
-            <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded border border-gray-300">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-3 bg-gray-50 px-3 md:px-4 py-2 rounded border border-gray-300 w-full md:w-auto">
+              <Calendar className="w-4 h-4 text-gray-500 hidden md:block" />
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-2 w-full md:w-auto">
                 <span className="text-xs text-gray-600">{t.finance.dateRange}:</span>
                 <input
                   type="date"
@@ -319,7 +322,7 @@ function FinanceContent() {
 
           {/* Content Area - Pure White Background */}
           <div className="flex-1 overflow-auto bg-white">
-            <div className="p-6">
+            <div className="p-3 md:p-6">
               {renderContent()}
             </div>
           </div>

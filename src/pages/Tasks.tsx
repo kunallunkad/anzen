@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import {
   Plus, Search, Filter, Clock, CheckCircle2, AlertCircle,
   Calendar, User, Tag, Flame, ArrowUp, Minus, Circle,
@@ -56,6 +57,7 @@ interface FilterState {
 
 export function Tasks() {
   const { user, profile } = useAuth();
+  const { t } = useLanguage();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -302,7 +304,7 @@ export function Tasks() {
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Tasks</h1>
+            <h1 className="text-3xl font-bold text-gray-900">{t('tasks.title')}</h1>
             <p className="text-gray-600 mt-1">Manage and track team assignments</p>
           </div>
           <button
@@ -310,7 +312,7 @@ export function Tasks() {
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
             <Plus className="w-5 h-5" />
-            New Task
+            {t('tasks.addTask')}
           </button>
         </div>
 
@@ -334,7 +336,7 @@ export function Tasks() {
                 <Clock className="w-6 h-6 text-yellow-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Pending</p>
+                <p className="text-sm text-gray-600">{t('common.pending')}</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
               </div>
             </div>
@@ -346,7 +348,7 @@ export function Tasks() {
                 <CheckCircle2 className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Completed</p>
+                <p className="text-sm text-gray-600">{t('common.completed')}</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
               </div>
             </div>
@@ -358,7 +360,7 @@ export function Tasks() {
                 <AlertCircle className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Overdue</p>
+                <p className="text-sm text-gray-600">{t('common.overdue')}</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.overdue}</p>
               </div>
             </div>
@@ -379,7 +381,7 @@ export function Tasks() {
                 }`}
               >
                 <Circle className="w-4 h-4" />
-                All Tasks
+                {t('tasks.allTasks')}
               </button>
               <button
                 onClick={() => setFilters({ ...filters, taskType: 'system' })}
@@ -409,11 +411,11 @@ export function Tasks() {
               {/* View Tabs */}
               <div className="flex gap-2 flex-wrap">
                 {[
-                  { value: 'my-tasks', label: 'My Tasks' },
-                  { value: 'pending', label: 'Pending' },
-                  { value: 'completed', label: 'Completed' },
-                  { value: 'overdue', label: 'Overdue' },
-                  { value: 'all', label: 'All Tasks' }
+                  { value: 'my-tasks', label: t('tasks.myTasks') },
+                  { value: 'pending', label: t('common.pending') },
+                  { value: 'completed', label: t('common.completed') },
+                  { value: 'overdue', label: t('common.overdue') },
+                  { value: 'all', label: t('tasks.allTasks') }
                 ].map(view => (
                   <button
                     key={view.value}
@@ -435,7 +437,7 @@ export function Tasks() {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type="text"
-                    placeholder="Search tasks..."
+                    placeholder={`${t('common.search')}...`}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -456,7 +458,7 @@ export function Tasks() {
             {showFilters && (
               <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('common.status')}</label>
                   <div className="space-y-2">
                     {['to_do', 'in_progress', 'waiting', 'completed'].map(status => (
                       <label key={status} className="flex items-center gap-2">
@@ -479,7 +481,7 @@ export function Tasks() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('tasks.priority')}</label>
                   <div className="space-y-2">
                     {['urgent', 'high', 'medium', 'low'].map(priority => (
                       <label key={priority} className="flex items-center gap-2">
@@ -518,7 +520,7 @@ export function Tasks() {
             {filteredTasks.length === 0 ? (
               <div className="p-12 text-center">
                 <CheckCircle2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No tasks found</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('common.noData')}</h3>
                 <p className="text-gray-600 mb-6">
                   {searchQuery || filters.status.length > 0 || filters.priority.length > 0
                     ? 'Try adjusting your filters or search query'
@@ -530,7 +532,7 @@ export function Tasks() {
                     className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                   >
                     <Plus className="w-5 h-5" />
-                    Create Task
+                    {t('tasks.addTask')}
                   </button>
                 )}
               </div>

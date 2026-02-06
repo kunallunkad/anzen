@@ -156,7 +156,7 @@ export function Stock() {
   const columns = [
     {
       key: 'product_name',
-      label: 'Product',
+      label: t('stock.productName'),
       render: (value: any, item: StockSummary) => (
         <div className="py-1">
           <span className="font-medium text-gray-900">{item.product_name}</span>
@@ -166,7 +166,7 @@ export function Stock() {
     },
     {
       key: 'stock',
-      label: 'Total Stock',
+      label: t('stock.totalStock'),
       render: (value: any, item: StockSummary) => (
         <span className={`font-semibold ${getStockStatusColor(item.total_current_stock, item.active_batch_count)}`}>
           {item.total_current_stock.toLocaleString()} {item.unit}
@@ -175,7 +175,7 @@ export function Stock() {
     },
     {
       key: 'reserved',
-      label: 'Reserved',
+      label: t('stock.reserved'),
       render: (value: any, item: StockSummary) => {
         if (item.reserved_stock === 0) return <span className="text-gray-400">-</span>;
         if (item.reserved_stock < 0) {
@@ -194,7 +194,7 @@ export function Stock() {
     },
     {
       key: 'available',
-      label: 'Available',
+      label: t('stock.available'),
       render: (value: any, item: StockSummary) => (
         <span className="text-green-600 font-semibold">
           {item.available_quantity.toLocaleString()} {item.unit}
@@ -203,7 +203,7 @@ export function Stock() {
     },
     {
       key: 'batches',
-      label: 'Batches',
+      label: t('stock.batches'),
       render: (value: any, item: StockSummary) => (
         <span className="text-sm">
           <span className="text-blue-600 font-medium">{item.active_batch_count}</span>
@@ -215,7 +215,7 @@ export function Stock() {
     },
     {
       key: 'expiry',
-      label: 'Nearest Expiry',
+      label: t('stock.nearestExpiry'),
       render: (value: any, item: StockSummary) => (
         item.nearest_expiry_date ? (
           <span className={`text-sm ${
@@ -238,21 +238,21 @@ export function Stock() {
   const batchColumns = [
     {
       key: 'batch_number',
-      label: 'Batch',
+      label: t('stock.batchNumber'),
       render: (value: any, batch: DetailedBatch) => (
         <span className="font-mono text-sm">{batch.batch_number}</span>
       )
     },
     {
       key: 'current_stock',
-      label: 'Total',
+      label: t('stock.totalStock'),
       render: (value: any, batch: DetailedBatch) => (
         <span className="font-semibold text-sm">{batch.current_stock.toLocaleString()} {selectedProduct?.unit}</span>
       )
     },
     {
       key: 'reserved_stock',
-      label: 'Reserved',
+      label: t('stock.reserved'),
       render: (value: any, batch: DetailedBatch) => (
         <span className="text-orange-600 font-medium text-sm">
           {batch.reserved_stock > 0 ? `${batch.reserved_stock.toLocaleString()} ${selectedProduct?.unit}` : '-'}
@@ -261,7 +261,7 @@ export function Stock() {
     },
     {
       key: 'available_quantity',
-      label: 'Available',
+      label: t('stock.available'),
       render: (value: any, batch: DetailedBatch) => (
         <span className="text-green-600 font-semibold text-sm">
           {batch.available_quantity.toLocaleString()} {selectedProduct?.unit}
@@ -270,7 +270,7 @@ export function Stock() {
     },
     {
       key: 'import_date',
-      label: 'Imported',
+      label: t('stock.imported'),
       render: (value: any, batch: DetailedBatch) => (
         <span className="text-sm text-gray-600">
           {new Date(batch.import_date).toLocaleDateString()}
@@ -279,7 +279,7 @@ export function Stock() {
     },
     {
       key: 'expiry_date',
-      label: 'Expiry',
+      label: t('stock.expiry'),
       render: (value: any, batch: DetailedBatch) => (
         <span className={`text-sm ${
           isExpired(batch.expiry_date) ? 'text-red-700 font-semibold' :
@@ -304,7 +304,7 @@ export function Stock() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Stock Inventory</h1>
+            <h1 className="text-3xl font-bold text-gray-900">{t('stock.title')}</h1>
             <p className="text-gray-600 mt-1">Current stock levels across all products</p>
           </div>
           <button

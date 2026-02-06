@@ -990,7 +990,7 @@ export function DeliveryChallan() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Delivery Challan (Surat Jalan)</h1>
             <p className="text-gray-600 mt-1">Manage delivery orders and dispatch records</p>
@@ -1083,7 +1083,7 @@ export function DeliveryChallan() {
           size="xl"
         >
           <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Customer *
@@ -1124,7 +1124,7 @@ export function DeliveryChallan() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Vehicle Number
@@ -1165,7 +1165,7 @@ export function DeliveryChallan() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Delivery Address *
@@ -1223,7 +1223,7 @@ export function DeliveryChallan() {
 
                   return (
                     <div key={index} className="relative p-2 bg-gray-50 rounded border border-gray-200">
-                      <div className="grid grid-cols-2 gap-2 mb-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
                         <div>
                           <label className="block text-xs text-gray-600 mb-0.5">Product *</label>
                           <SearchableSelect
@@ -1292,6 +1292,7 @@ export function DeliveryChallan() {
 
                       {selectedBatch && (
                         <div className="mb-2">
+                          <div className="overflow-x-auto">
                           <table className="w-full text-[10px] border border-gray-300">
                             <thead className="bg-gray-200">
                               <tr>
@@ -1320,11 +1321,12 @@ export function DeliveryChallan() {
                               </tr>
                             </tbody>
                           </table>
+                          </div>
                         </div>
                       )}
 
                       {item.pack_size && (
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                           <div>
                             <label className="block text-xs text-gray-600 mb-0.5">No. of Packs *</label>
                             <input

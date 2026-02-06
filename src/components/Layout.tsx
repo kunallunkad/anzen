@@ -113,16 +113,16 @@ export function Layout({ children }: LayoutProps) {
     { id: 'batches', label: t('nav.batches'), icon: Boxes, roles: ['admin', 'warehouse', 'accounts'] },
     { id: 'stock', label: t('nav.stock'), icon: Warehouse, roles: ['admin', 'sales', 'warehouse', 'accounts'] },
     { id: 'customers', label: t('nav.customers'), icon: Users, roles: ['admin', 'accounts', 'sales'] },
-    { id: 'sales-orders', label: 'Sales Orders', icon: FileText, roles: ['admin', 'accounts', 'sales'] },
+    { id: 'sales-orders', label: t('nav.salesOrders'), icon: FileText, roles: ['admin', 'accounts', 'sales'] },
     { id: 'delivery-challan', label: t('nav.deliveryChallan'), icon: Truck, roles: ['admin', 'accounts', 'sales', 'warehouse'] },
     { id: 'sales', label: t('nav.sales'), icon: ShoppingCart, roles: ['admin', 'accounts', 'sales'] },
-    { id: 'purchase-orders', label: 'Purchase Orders', icon: ClipboardList, roles: ['admin', 'warehouse', 'accounts'] },
-    { id: 'import-requirements', label: 'Import Requirements', icon: TrendingUp, roles: ['admin', 'warehouse', 'sales'] },
-    { id: 'import-containers', label: 'Import Containers', icon: Package, roles: ['admin', 'warehouse', 'accounts'] },
+    { id: 'purchase-orders', label: t('nav.purchaseOrders'), icon: ClipboardList, roles: ['admin', 'warehouse', 'accounts'] },
+    { id: 'import-requirements', label: t('nav.importRequirements'), icon: TrendingUp, roles: ['admin', 'warehouse', 'sales'] },
+    { id: 'import-containers', label: t('nav.importContainers'), icon: Package, roles: ['admin', 'warehouse', 'accounts'] },
     { id: 'finance', label: t('nav.finance'), icon: DollarSign, roles: ['admin', 'accounts'] },
     { id: 'crm', label: t('nav.crm'), icon: UserCircle, roles: ['admin', 'sales'] },
-    { id: 'command-center', label: 'Command Center', icon: Zap, roles: ['admin', 'sales'] },
-    { id: 'tasks', label: 'Tasks', icon: CheckSquare, roles: ['admin', 'accounts', 'sales', 'warehouse'] },
+    { id: 'command-center', label: t('nav.commandCenter'), icon: Zap, roles: ['admin', 'sales'] },
+    { id: 'tasks', label: t('nav.tasks'), icon: CheckSquare, roles: ['admin', 'accounts', 'sales', 'warehouse'] },
     { id: 'inventory', label: t('nav.inventory'), icon: Warehouse, roles: ['admin', 'warehouse'] },
     { id: 'settings', label: t('nav.settings'), icon: Settings, roles: ['admin', 'accounts', 'sales'] },
   ];
@@ -227,7 +227,7 @@ export function Layout({ children }: LayoutProps) {
             <div className="flex-1 hidden md:flex items-center justify-center px-4">
               <div className="flex items-center justify-center gap-2 text-sm">
                 <span className="font-medium text-gray-700">
-                  Welcome, <span className="text-blue-600">{profile?.full_name || profile?.username || 'User'}</span>
+                  {t('auth.welcome')}, <span className="text-blue-600">{profile?.full_name || profile?.username || 'User'}</span>
                 </span>
                 <span className="text-gray-400">•</span>
                 <div className="flex items-center gap-2 text-gray-500 italic">

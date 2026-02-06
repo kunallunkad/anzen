@@ -147,7 +147,7 @@ export function Inventory() {
         await loadRejections();
       }
     } catch (err) {
-      setError('Failed to load inventory data. Please try again.');
+      setError(t('errors.failedToLoadInventory'));
     }
     setLoading(false);
   };
@@ -277,7 +277,7 @@ export function Inventory() {
       alert('Transaction added successfully');
     } catch (error) {
       console.error('Error saving transaction:', error);
-      alert('Failed to save transaction. Please try again.');
+      alert(t('errors.failedToSaveTransaction'));
     }
   };
 
@@ -366,12 +366,12 @@ export function Inventory() {
   const transactionColumns = [
     {
       key: 'transaction_date',
-      label: 'Date',
+      label: t('common.date'),
       render: (value: any, tx: InventoryTransaction) => new Date(tx.transaction_date).toLocaleDateString()
     },
     {
       key: 'transaction_type',
-      label: 'Type',
+      label: t('common.type'),
       render: (value: any, tx: InventoryTransaction) => (
         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
           tx.transaction_type === 'purchase' ? 'bg-green-100 text-green-800' :
@@ -387,7 +387,7 @@ export function Inventory() {
     },
     {
       key: 'product',
-      label: 'Product',
+      label: t('common.product'),
       render: (value: any, tx: InventoryTransaction) => (
         <div>
           <div className="font-medium">{tx.products?.product_name}</div>
@@ -397,12 +397,12 @@ export function Inventory() {
     },
     {
       key: 'batch_number',
-      label: 'Batch',
+      label: t('common.batch'),
       render: (value: any, tx: InventoryTransaction) => tx.batches?.batch_number || 'N/A'
     },
     {
       key: 'quantity',
-      label: 'Quantity',
+      label: t('common.quantity'),
       render: (value: any, tx: InventoryTransaction) => (
         <span className={`font-semibold ${
           tx.transaction_type === 'purchase' ? 'text-green-600' :
@@ -545,7 +545,7 @@ export function Inventory() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Inventory Management</h1>
+            <h1 className="text-3xl font-bold text-gray-900">{t('inventory.title')}</h1>
             <p className="text-gray-600 mt-1">Track transactions, returns, and rejections</p>
           </div>
           {canManage && activeTab === 'transactions' && (

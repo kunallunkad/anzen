@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { Modal } from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
 import { Plus, Mail, Calendar as CalendarIcon, LayoutGrid, Users, Table, Inbox, Activity, Clock, Archive } from 'lucide-react';
 import { GmailBrowserInbox } from '../components/crm/GmailBrowserInbox';
@@ -75,6 +76,7 @@ interface Inquiry {
 
 export function CRM() {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -109,7 +111,7 @@ export function CRM() {
       if (fetchError) throw fetchError;
       setInquiries(data || []);
     } catch (err) {
-      setError('Failed to load inquiries. Please try again.');
+      setError(t('errors.failedToLoadInquiries'));
     } finally {
       setLoading(false);
     }
@@ -239,7 +241,7 @@ export function CRM() {
         }
 
         if (!formData.customer_id) {
-          alert('Customer selection is required. Please select or create a customer.');
+          alert(t('validation.customerSelectionRequired'));
           return;
         }
       }
@@ -332,7 +334,7 @@ export function CRM() {
       loadInquiries();
     } catch (error) {
       console.error('Error saving inquiry:', error);
-      alert('Failed to save inquiry. Please try again.');
+      alert(t('errors.failedToSaveInquiry'));
       throw error;
     }
   };
@@ -343,7 +345,7 @@ export function CRM() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this inquiry?')) return;
+    if (!confirm(t('confirm.deleteInquiry'))) return;
 
     try {
       const { error } = await supabase
@@ -355,7 +357,7 @@ export function CRM() {
       loadInquiries();
     } catch (error) {
       console.error('Error deleting inquiry:', error);
-      alert('Failed to delete inquiry. Please try again.');
+      alert(t('errors.failedToDeleteInquiry'));
     }
   };
 
@@ -413,7 +415,7 @@ export function CRM() {
       }
     } catch (error) {
       console.error('Error updating customer:', error);
-      alert('Failed to update customer. Please try again.');
+      alert(t('errors.failedToUpdateCustomer'));
     }
   };
 
@@ -444,7 +446,7 @@ export function CRM() {
     <Layout>
       <div className="space-y-4">
         <div className="flex items-center">
-          <h1 className="text-xl font-semibold text-gray-900">CRM - Inquiry Management</h1>
+          <h1 className="text-xl font-semibold text-gray-900">{t('crm.title')}</h1>
         </div>
 
         <div className="bg-white rounded-lg shadow">
@@ -459,7 +461,7 @@ export function CRM() {
                 }`}
               >
                 <Inbox className="w-5 h-5" />
-                Email Inbox
+                {t('crm.emailInbox')}
               </button>
               <button
                 onClick={() => setActiveTab('table')}
@@ -470,7 +472,7 @@ export function CRM() {
                 }`}
               >
                 <Table className="w-5 h-5" />
-                Table View
+                {t('crm.inquiries')}
               </button>
               <button
                 onClick={() => setActiveTab('pipeline')}
@@ -481,7 +483,7 @@ export function CRM() {
                 }`}
               >
                 <LayoutGrid className="w-5 h-5" />
-                Pipeline
+                {t('crm.pipeline')}
               </button>
               <button
                 onClick={() => setActiveTab('calendar')}

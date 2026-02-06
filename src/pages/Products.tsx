@@ -494,7 +494,7 @@ export function Products() {
   const columns = [
     {
       key: 'product_name',
-      label: 'NAME',
+      label: t('products.productName'),
       render: (value: string, row: Product) => (
         <button
           onClick={() => handleViewProduct(row)}
@@ -504,15 +504,15 @@ export function Products() {
         </button>
       )
     },
-    { key: 'hsn_code', label: 'HSN CODE' },
-    { key: 'category', label: 'CATEGORY', render: (value: any) => (value && typeof value === 'string') ? value.toUpperCase() : '-' },
-    { key: 'unit', label: 'UNIT', render: (value: any) => (value && typeof value === 'string') ? value.toUpperCase() : '-' },
+    { key: 'hsn_code', label: t('products.hsnCode') },
+    { key: 'category', label: t('products.category'), render: (value: any) => (value && typeof value === 'string') ? value.toUpperCase() : '-' },
+    { key: 'unit', label: t('products.unit'), render: (value: any) => (value && typeof value === 'string') ? value.toUpperCase() : '-' },
     {
       key: 'current_stock',
-      label: 'STOCK',
+      label: t('products.currentStock'),
       render: (value: any) => (value !== null && value !== undefined && typeof value === 'number') ? value.toFixed(2) : '-'
     },
-    { key: 'duty_a1', label: 'DUTY A1' }
+    { key: 'duty_a1', label: t('products.dutyA1') }
   ];
 
   return (
@@ -520,7 +520,7 @@ export function Products() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Products</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t('products.title')}</h1>
             <p className="text-gray-600">Manage your product catalog with packaging details</p>
           </div>
           <button
@@ -531,7 +531,7 @@ export function Products() {
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
             <Plus className="w-4 h-4" />
-            Add Product
+            {t('products.addProduct')}
           </button>
         </div>
 
@@ -565,7 +565,7 @@ export function Products() {
           setModalOpen(false);
           resetForm();
         }}
-        title={editingProduct ? 'Edit Product' : 'Add Product'}
+        title={editingProduct ? t('products.editProduct') : t('products.addProduct')}
         maxWidth="max-w-4xl"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -576,7 +576,7 @@ export function Products() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Product Name *
+                  {t('products.productName')} *
                 </label>
                 <input
                   type="text"
@@ -589,7 +589,7 @@ export function Products() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  HSN Code *
+                  {t('products.hsnCode')} *
                 </label>
                 <input
                   type="text"
@@ -603,7 +603,7 @@ export function Products() {
 
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('products.category')} *</label>
                 <select
                   required
                   value={formData.category}
@@ -617,7 +617,7 @@ export function Products() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Unit *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('products.unit')} *</label>
                 <select
                   required
                   value={formData.unit}
@@ -633,7 +633,7 @@ export function Products() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Min Stock Level
+                  {t('products.minStockLevel')}
                 </label>
                 <input
                   type="number"
@@ -648,7 +648,7 @@ export function Products() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Packaging Type
+                  {t('products.packagingType')}
                 </label>
                 <input
                   type="text"
@@ -661,7 +661,7 @@ export function Products() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Duty A1 (%)
+                  {t('products.dutyA1')} (%)
                 </label>
                 <input
                   type="text"

@@ -1089,29 +1089,29 @@ export function Sales() {
   };
 
   const columns = [
-    { key: 'invoice_number', label: 'Invoice #' },
+    { key: 'invoice_number', label: t('sales.invoiceNumber') },
     {
       key: 'customer',
-      label: 'Customer',
+      label: t('sales.customer'),
       render: (value: any, inv: SalesInvoice) => (
         <div className="font-medium">{inv.customers?.company_name}</div>
       )
     },
     {
       key: 'invoice_date',
-      label: 'Date',
+      label: t('common.date'),
       render: (value: any, inv: SalesInvoice) => new Date(inv.invoice_date).toLocaleDateString()
     },
     {
       key: 'total_amount',
-      label: 'Total Amount',
+      label: t('common.total'),
       render: (value: any, inv: SalesInvoice) => (
         <span className="font-medium">Rp {inv.total_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
       )
     },
     {
       key: 'paid_amount',
-      label: 'Paid Amount',
+      label: t('sales.paidAmount'),
       render: (value: any, inv: SalesInvoice) => (
         <span className="text-green-600 font-medium">
           Rp {(inv.paid_amount || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1120,7 +1120,7 @@ export function Sales() {
     },
     {
       key: 'balance_amount',
-      label: 'Balance',
+      label: t('sales.balance'),
       render: (value: any, inv: SalesInvoice) => (
         <span className={`font-medium ${
           (inv.balance_amount || 0) === 0 ? 'text-gray-400' : 'text-orange-600'
@@ -1131,15 +1131,15 @@ export function Sales() {
     },
     {
       key: 'payment_status',
-      label: 'Payment Status',
+      label: t('sales.paymentStatus'),
       render: (value: any, inv: SalesInvoice) => (
         <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
           inv.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
           inv.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
           'bg-red-100 text-red-800'
         }`}>
-          {inv.payment_status === 'pending' ? 'Unpaid' :
-           inv.payment_status === 'partial' ? 'Partially Paid' : 'Paid'}
+          {inv.payment_status === 'pending' ? t('common.unpaid') :
+           inv.payment_status === 'partial' ? t('common.partial') : t('common.paid')}
         </span>
       )
     },
@@ -1159,8 +1159,8 @@ export function Sales() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Sales Invoices</h1>
-            <p className="text-gray-600 mt-1">Manage sales invoices and track payments</p>
+            <h1 className="text-3xl font-bold text-gray-900">{t('sales.title')}</h1>
+            <p className="text-gray-600 mt-1">{t('sales.invoices')}</p>
           </div>
           {canManage && (
             <div className="flex gap-3">
@@ -1174,7 +1174,7 @@ export function Sales() {
                 className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
               >
                 <Plus className="w-5 h-5" />
-                Create Invoice
+                {t('sales.createInvoice')}
               </button>
               <button
                 onClick={() => {
@@ -1183,7 +1183,7 @@ export function Sales() {
                 className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
               >
                 <FileX className="w-5 h-5" />
-                Credit Notes
+                {t('nav.creditNotes')}
               </button>
             </div>
           )}
@@ -1191,19 +1191,19 @@ export function Sales() {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm text-gray-600">Total Invoices</p>
+            <p className="text-sm text-gray-600">{t('sales.invoices')}</p>
             <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
           </div>
           <div className="bg-blue-50 rounded-lg shadow p-6">
-            <p className="text-sm text-blue-600">Total Revenue</p>
+            <p className="text-sm text-blue-600">{t('common.total')}</p>
             <p className="text-2xl font-bold text-blue-600 mt-1">Rp {stats.totalRevenue.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
           <div className="bg-red-50 rounded-lg shadow p-6">
-            <p className="text-sm text-red-600">Pending Payment</p>
+            <p className="text-sm text-red-600">{t('common.pending')}</p>
             <p className="text-2xl font-bold text-red-600 mt-1">{stats.pending}</p>
           </div>
           <div className="bg-green-50 rounded-lg shadow p-6">
-            <p className="text-sm text-green-600">Paid</p>
+            <p className="text-sm text-green-600">{t('common.paid')}</p>
             <p className="text-2xl font-bold text-green-600 mt-1">{stats.paid}</p>
           </div>
         </div>
@@ -1217,21 +1217,21 @@ export function Sales() {
               <button
                 onClick={() => handleView(invoice)}
                 className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                title="View Invoice"
+                title={t('common.view')}
               >
                 <Eye className="w-4 h-4" />
               </button>
               <button
                 onClick={() => handleEdit(invoice)}
                 className="p-1 text-green-600 hover:bg-green-50 rounded"
-                title="Edit Invoice"
+                title={t('common.edit')}
               >
                 <Edit className="w-4 h-4" />
               </button>
               <button
                 onClick={() => handleDelete(invoice.id)}
                 className="p-1 text-red-600 hover:bg-red-50 rounded"
-                title="Delete Invoice"
+                title={t('common.delete')}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -1245,14 +1245,14 @@ export function Sales() {
             setModalOpen(false);
             resetForm();
           }}
-          title={editingInvoice ? "Edit Sales Invoice" : "Create Sales Invoice"}
+          title={editingInvoice ? t('sales.editInvoice') : t('sales.createInvoice')}
           size="xl"
         >
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="space-y-2">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Invoice No *</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">{t('sales.invoiceNumber')} *</label>
                   <input
                     type="text"
                     value={formData.invoice_number}
@@ -1291,7 +1291,7 @@ export function Sales() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Customer *</label>
                   <SearchableSelect
@@ -1342,7 +1342,7 @@ export function Sales() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
                   <input
@@ -1417,7 +1417,8 @@ export function Sales() {
                           </button>
                         )}
                       </div>
-                      <div className="grid grid-cols-12 gap-2 items-end">
+                      <div className="overflow-x-auto">
+                      <div className="grid grid-cols-12 gap-2 items-end min-w-[700px]">
                         <div className="col-span-3">
                           <label className="block text-xs text-gray-600 mb-1">Product *</label>
                           <select
@@ -1520,6 +1521,7 @@ export function Sales() {
                             <Trash2 className="w-4 h-4" />
                           </button>
                         )}
+                      </div>
                       </div>
                       </div>
 
