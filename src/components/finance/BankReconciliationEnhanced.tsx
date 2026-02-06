@@ -1138,11 +1138,17 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
       }
 
       const firstCell = String(row[0] || '');
+      const secondCell = String(row[1] || '');
+      const rowText = `${firstCell} ${secondCell}`.toUpperCase();
 
-      if (firstCell.includes('Saldo Awal') ||
-          firstCell.includes('Mutasi Debet') ||
-          firstCell.includes('Mutasi Kredit') ||
-          firstCell.includes('Saldo Akhir')) {
+      if (rowText.includes('SALDO AWAL')) {
+        skippedCount++;
+        continue;
+      }
+
+      if (rowText.includes('MUTASI DEBET') ||
+          rowText.includes('MUTASI KREDIT') ||
+          rowText.includes('SALDO AKHIR')) {
         console.log(`⏹️ Stopped at footer row ${i}: ${firstCell}`);
         break;
       }
@@ -1166,18 +1172,31 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
         processedCount++;
       } else {
         const dateStr = String(dateVal).trim();
-        const dateMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})$/);
-        if (!dateMatch) {
-          skippedCount++;
-          if (i < headerRowIdx + 5) console.log(`⏭️ Row ${i}: Date doesn't match pattern: "${dateStr}"`);
-          continue;
-        }
+        const numericMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})$/);
+        const monthNames: Record<string, number> = {
+          'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'mei': 5,
+          'jun': 6, 'jul': 7, 'aug': 8, 'agu': 8, 'ags': 8, 'sep': 9,
+          'oct': 10, 'okt': 10, 'nov': 11, 'dec': 12, 'des': 12
+        };
+        const namedMatch = dateStr.match(/^(\d{1,2})[-\s](jan|feb|mar|apr|may|mei|jun|jul|aug|agu|ags|sep|oct|okt|nov|dec|des)/i);
+        const fullDateMatch = dateStr.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
 
-        const day = parseInt(dateMatch[1]);
-        const mon = parseInt(dateMatch[2]);
+        let day = 0, mon = 0;
+
+        if (fullDateMatch) {
+          day = parseInt(fullDateMatch[1]);
+          mon = parseInt(fullDateMatch[2]);
+        } else if (numericMatch) {
+          day = parseInt(numericMatch[1]);
+          mon = parseInt(numericMatch[2]);
+        } else if (namedMatch) {
+          day = parseInt(namedMatch[1]);
+          mon = monthNames[namedMatch[2].toLowerCase()] || 0;
+        }
 
         if (day < 1 || day > 31 || mon < 1 || mon > 12) {
           skippedCount++;
+          if (i < headerRowIdx + 5) console.log(`⏭️ Row ${i}: Date doesn't match pattern: "${dateStr}"`);
           continue;
         }
 
