@@ -27,6 +27,7 @@ import { SuppliersManager } from '../components/finance/SuppliersManager';
 import { BankAccountsManager } from '../components/finance/BankAccountsManager';
 import { TaxReports } from '../components/finance/TaxReports';
 import { CAReports } from '../components/finance/CAReports';
+import { GeneralJournalEntry } from '../components/finance/GeneralJournalEntry';
 
 type FinanceTab =
   | 'purchase' | 'receipt' | 'payment' | 'journal' | 'contra' | 'expenses' | 'petty_cash'
@@ -175,7 +176,7 @@ function FinanceContent() {
       case 'payment':
         return <PaymentVoucherManager canManage={canManage} />;
       case 'journal':
-        return <div className="text-center p-8 text-gray-500">{t?.finance?.journal || 'Journal'} - {t?.common?.loading || 'Loading...'}</div>;
+        return <GeneralJournalEntry canManage={canManage} onNavigateToLedger={() => setActiveTab('ledger')} />;
       case 'contra':
         return <FundTransferManager canManage={canManage} />;
       case 'expenses':
