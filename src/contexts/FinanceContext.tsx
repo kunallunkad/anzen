@@ -25,10 +25,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  useEffect(() => {
-    console.log('Finance date range changed:', dateRange);
-  }, [dateRange]);
-
   return (
     <FinanceContext.Provider value={{ dateRange, setDateRange, refreshTrigger, triggerRefresh }}>
       {children}

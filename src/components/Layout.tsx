@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigation } from '../contexts/NavigationContext';
+import { useFinance } from '../contexts/FinanceContext';
 import { NotificationDropdown } from './NotificationDropdown';
 import {
   LayoutDashboard,
@@ -27,6 +28,7 @@ import {
   AlertTriangle,
   ClipboardList,
   Sparkles,
+  Calendar,
 } from 'lucide-react';
 import logo from '../assets/Untitled-1.svg';
 
@@ -82,6 +84,7 @@ export function Layout({ children }: LayoutProps) {
   const { profile, signOut } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const { currentPage, setCurrentPage, sidebarCollapsed, setSidebarCollapsed } = useNavigation();
+  const { dateRange, setDateRange } = useFinance();
   const [quote, setQuote] = useState<Quote>({ content: 'Welcome back!', author: '' });
 
   // Auto-collapse sidebar for specific pages
@@ -224,18 +227,28 @@ export function Layout({ children }: LayoutProps) {
               )}
             </div>
 
-            <div className="flex-1 hidden md:flex items-center justify-center px-4">
-              <div className="flex items-center justify-center gap-2 text-sm">
-                <span className="font-medium text-gray-700">
-                  {t('auth.welcome')}, <span className="text-blue-600">{profile?.full_name || profile?.username || 'User'}</span>
-                </span>
-                <span className="text-gray-400">•</span>
-                <div className="flex items-center gap-2 text-gray-500 italic">
-                  <Sparkles className="w-3 h-3 text-yellow-500 flex-shrink-0" />
-                  <p className="line-clamp-1">
-                    {`"${quote.content}"`}
-                  </p>
-                </div>
+            <div className="flex-1 hidden md:flex items-center justify-center px-4 gap-4">
+              <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 flex-shrink-0">
+                <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                <input
+                  type="date"
+                  value={dateRange.startDate}
+                  onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
+                  className="px-1.5 py-0.5 text-xs border border-gray-200 rounded bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <span className="text-xs text-gray-400">to</span>
+                <input
+                  type="date"
+                  value={dateRange.endDate}
+                  onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
+                  className="px-1.5 py-0.5 text-xs border border-gray-200 rounded bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div className="flex items-center gap-2 text-gray-500 italic min-w-0">
+                <Sparkles className="w-3 h-3 text-yellow-500 flex-shrink-0" />
+                <p className="line-clamp-1 text-sm">
+                  {`"${quote.content}"`}
+                </p>
               </div>
             </div>
 

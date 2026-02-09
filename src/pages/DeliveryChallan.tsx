@@ -7,6 +7,7 @@ import { SearchableSelect } from '../components/SearchableSelect';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '../contexts/NavigationContext';
+import { useFinance } from '../contexts/FinanceContext';
 import { supabase } from '../lib/supabase';
 import { Plus, Trash2, Eye, Edit, FileText, CheckCircle, XCircle } from 'lucide-react';
 import { showToast } from '../components/ToastNotification';
@@ -89,6 +90,7 @@ const isExpired = (expiryDate: string | null): boolean => {
 export function DeliveryChallan() {
   const { profile } = useAuth();
   const { setCurrentPage, setNavigationData } = useNavigation();
+  const { dateRange } = useFinance();
   const [challans, setChallans] = useState<DeliveryChallan[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -130,7 +132,7 @@ export function DeliveryChallan() {
     loadProducts();
     loadBatches();
     loadCompanySettings();
-  }, []);
+  }, [dateRange.startDate, dateRange.endDate]);
 
   const loadSalesOrders = async (customerId?: string) => {
     try {
@@ -180,6 +182,8 @@ export function DeliveryChallan() {
       const { data, error } = await supabase
         .from('delivery_challans')
         .select('*, customers(company_name, address, city, phone, pbf_license)')
+        .gte('challan_date', dateRange.startDate)
+        .lte('challan_date', dateRange.endDate)
         .order('challan_date', { ascending: false });
 
       if (error) throw error;

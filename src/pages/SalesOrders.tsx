@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useFinance } from '../contexts/FinanceContext';
 import { Layout } from '../components/Layout';
 import { FileText, Plus, Search, Filter, Eye, Edit, Trash2, XCircle, FileCheck, CheckCircle, Paperclip, Download, ExternalLink } from 'lucide-react';
 import { Modal } from '../components/Modal';
@@ -66,6 +67,7 @@ interface SalesOrder {
 export default function SalesOrders() {
   const { user, profile } = useAuth();
   const { t } = useLanguage();
+  const { dateRange } = useFinance();
   const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<SalesOrder[]>([]);
@@ -89,7 +91,7 @@ export default function SalesOrders() {
   useEffect(() => {
     fetchSalesOrders();
     fetchCustomers();
-  }, [activeTab]);
+  }, [activeTab, dateRange.startDate, dateRange.endDate]);
 
   useEffect(() => {
     filterOrders();
@@ -139,6 +141,10 @@ export default function SalesOrders() {
       } else {
         query = query.eq('is_archived', true);
       }
+
+      query = query
+        .gte('so_date', dateRange.startDate)
+        .lte('so_date', dateRange.endDate);
 
       const { data, error } = await query.order('created_at', { ascending: false });
 

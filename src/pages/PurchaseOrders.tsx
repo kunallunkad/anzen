@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useFinance } from '../contexts/FinanceContext';
 import { Layout } from '../components/Layout';
 import { FileText, Plus, Search, Eye, Edit, Trash2, CheckCircle, XCircle, Download, Package } from 'lucide-react';
 import { Modal } from '../components/Modal';
@@ -73,6 +74,7 @@ interface PurchaseOrder {
 export default function PurchaseOrders() {
   const { user, profile } = useAuth();
   const { t } = useLanguage();
+  const { dateRange } = useFinance();
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [filteredPOs, setFilteredPOs] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -119,7 +121,7 @@ export default function PurchaseOrders() {
     fetchPurchaseOrders();
     fetchSuppliers();
     fetchProducts();
-  }, []);
+  }, [dateRange.startDate, dateRange.endDate]);
 
   useEffect(() => {
     filterPOs();
@@ -150,6 +152,8 @@ export default function PurchaseOrders() {
             )
           )
         `)
+        .gte('po_date', dateRange.startDate)
+        .lte('po_date', dateRange.endDate)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

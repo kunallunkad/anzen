@@ -2,8 +2,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { FinanceProvider, useFinance } from '../contexts/FinanceContext';
-import { Calendar, ChevronDown, ChevronRight, Menu, X } from 'lucide-react';
+import { useFinance } from '../contexts/FinanceContext';
+import { ChevronDown, ChevronRight, Menu, X } from 'lucide-react';
 
 // Import all finance components
 import { PurchaseInvoiceManager } from '../components/finance/PurchaseInvoiceManager';
@@ -98,7 +98,7 @@ const getFinanceMenu = (t: any): MenuGroup[] => [
 function FinanceContent() {
   const { profile } = useAuth();
   const { t } = useLanguage();
-  const { dateRange, setDateRange } = useFinance();
+  const { dateRange } = useFinance();
   const [activeTab, setActiveTab] = useState<FinanceTab>('purchase');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -286,39 +286,19 @@ function FinanceContent() {
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Top Bar - Global Date Range ONLY */}
-          <div className="bg-white border-b border-gray-200 px-3 md:px-6 py-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="p-1.5 hover:bg-gray-100 rounded transition-colors"
-                title={sidebarCollapsed ? 'Show Menu' : 'Hide Menu'}
-              >
-                {sidebarCollapsed ? <Menu className="w-5 h-5 text-gray-600" /> : <X className="w-5 h-5 text-gray-600" />}
-              </button>
-              <h1 className="text-lg font-semibold text-gray-900">{t.finance.title}</h1>
-            </div>
-
-            {/* SINGLE GLOBAL DATE RANGE */}
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-3 bg-gray-50 px-3 md:px-4 py-2 rounded border border-gray-300 w-full md:w-auto">
-              <Calendar className="w-4 h-4 text-gray-500 hidden md:block" />
-              <div className="flex flex-col md:flex-row items-start md:items-center gap-2 w-full md:w-auto">
-                <span className="text-xs text-gray-600">{t.finance.dateRange}:</span>
-                <input
-                  type="date"
-                  value={dateRange.startDate}
-                  onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
-                  className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <span className="text-gray-500">{t.finance.to}</span>
-                <input
-                  type="date"
-                  value={dateRange.endDate}
-                  onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
-                  className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
+          {/* Top Bar */}
+          <div className="bg-white border-b border-gray-200 px-3 md:px-6 py-3 flex items-center gap-3">
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+              title={sidebarCollapsed ? 'Show Menu' : 'Hide Menu'}
+            >
+              {sidebarCollapsed ? <Menu className="w-5 h-5 text-gray-600" /> : <X className="w-5 h-5 text-gray-600" />}
+            </button>
+            <h1 className="text-lg font-semibold text-gray-900">{t.finance.title}</h1>
+            <span className="text-xs text-gray-400 ml-2">
+              {dateRange.startDate} to {dateRange.endDate}
+            </span>
           </div>
 
           {/* Content Area - Pure White Background */}
@@ -334,9 +314,5 @@ function FinanceContent() {
 }
 
 export function Finance() {
-  return (
-    <FinanceProvider>
-      <FinanceContent />
-    </FinanceProvider>
-  );
+  return <FinanceContent />;
 }

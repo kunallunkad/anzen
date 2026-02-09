@@ -8,6 +8,7 @@ import { SearchableSelect } from '../components/SearchableSelect';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '../contexts/NavigationContext';
+import { useFinance } from '../contexts/FinanceContext';
 import { supabase } from '../lib/supabase';
 import { Plus, Edit, Trash2, FileText, Eye, FileX } from 'lucide-react';
 import { showToast } from '../components/ToastNotification';
@@ -17,6 +18,7 @@ interface SalesInvoice {
   id: string;
   invoice_number: string;
   customer_id: string;
+  sales_order_id?: string | null;
   invoice_date: string;
   due_date: string;
   subtotal: number;
@@ -35,6 +37,15 @@ interface SalesInvoice {
     company_name: string;
     gst_vat_type: string;
   };
+}
+
+interface SalesOrderOption {
+  id: string;
+  so_number: string;
+  total_amount: number;
+  advance_payment_amount: number;
+  advance_payment_status: string;
+  status: string;
 }
 
 interface InvoiceItem {
@@ -139,12 +150,15 @@ export function Sales() {
   const { t } = useLanguage();
   const { profile } = useAuth();
   const { navigationData, clearNavigationData, setCurrentPage } = useNavigation();
+  const { dateRange } = useFinance();
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [pendingChallans, setPendingChallans] = useState<DeliveryChallan[]>([]);
   const [pendingDCOptions, setPendingDCOptions] = useState<Array<{ challan_id: string; challan_number: string; challan_date: string; item_count: number }>>([]);
+  const [customerSalesOrders, setCustomerSalesOrders] = useState<SalesOrderOption[]>([]);
+  const [selectedSOId, setSelectedSOId] = useState<string>('');
   const [selectedDCIds, setSelectedDCIds] = useState<string[]>([]);
   const [selectedChallanId, setSelectedChallanId] = useState<string>('');
   const [pendingDCsWithItems, setPendingDCsWithItems] = useState<DCWithItems[]>([]);
@@ -180,7 +194,7 @@ export function Sales() {
     loadCustomers();
     loadProducts();
     loadBatches();
-  }, []);
+  }, [dateRange.startDate, dateRange.endDate]);
 
   useEffect(() => {
     if (navigationData?.sourceType === 'delivery_challan') {
@@ -246,6 +260,8 @@ export function Sales() {
       const { data, error } = await supabase
         .from('sales_invoices')
         .select('*, customers(company_name, address, city, phone, npwp, pharmacy_license, gst_vat_type)')
+        .gte('invoice_date', dateRange.startDate)
+        .lte('invoice_date', dateRange.endDate)
         .order('invoice_date', { ascending: false });
 
       if (error) throw error;
@@ -401,6 +417,24 @@ export function Sales() {
     } catch (error) {
       console.error('Error loading pending challans:', error);
       setPendingChallans([]);
+    }
+  };
+
+  const loadCustomerSalesOrders = async (customerId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('sales_orders')
+        .select('id, so_number, total_amount, advance_payment_amount, advance_payment_status, status')
+        .eq('customer_id', customerId)
+        .eq('is_archived', false)
+        .in('status', ['approved', 'stock_reserved', 'shortage', 'pending_delivery', 'partially_delivered', 'delivered'])
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCustomerSalesOrders(data || []);
+    } catch (error) {
+      console.error('Error loading customer sales orders:', error);
+      setCustomerSalesOrders([]);
     }
   };
 
@@ -915,6 +949,7 @@ export function Sales() {
           .insert([{
             invoice_number: invoiceNumber,
             customer_id: formData.customer_id,
+            sales_order_id: selectedSOId || null,
             invoice_date: formData.invoice_date,
             due_date: dueDate.toISOString().split('T')[0],
             discount_amount: formData.discount,
@@ -1070,6 +1105,8 @@ export function Sales() {
     setPendingChallans([]);
     setPendingDCOptions([]);
     setSelectedDCIds([]);
+    setSelectedSOId('');
+    setCustomerSalesOrders([]);
     setFormData({
       invoice_number: '',
       customer_id: '',
@@ -1303,6 +1340,8 @@ export function Sales() {
                       setSelectedChallanId('');
                       setPendingChallans([]);
                       setSelectedDCIds([]);
+                      setSelectedSOId('');
+                      setCustomerSalesOrders([]);
                       setItems([{
                         product_id: '',
                         batch_id: null,
@@ -1313,8 +1352,10 @@ export function Sales() {
                       }]);
                       if (customerId) {
                         loadPendingDCOptions(customerId);
+                        loadCustomerSalesOrders(customerId);
                       } else {
                         setPendingDCOptions([]);
+                        setCustomerSalesOrders([]);
                       }
                     }}
                     options={customers.map(c => ({ value: c.id, label: c.company_name }))}
@@ -1343,6 +1384,38 @@ export function Sales() {
                   />
                 </div>
               </div>
+
+              {customerSalesOrders.length > 0 && !editingInvoice && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Link to Sales Order (for advance payment)</label>
+                  <select
+                    value={selectedSOId}
+                    onChange={(e) => setSelectedSOId(e.target.value)}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">-- No Sales Order --</option>
+                    {customerSalesOrders.map(so => (
+                      <option key={so.id} value={so.id}>
+                        {so.so_number} - Rp {so.total_amount.toLocaleString('id-ID')}
+                        {so.advance_payment_amount > 0
+                          ? ` (Advance: Rp ${so.advance_payment_amount.toLocaleString('id-ID')})`
+                          : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedSOId && (() => {
+                    const so = customerSalesOrders.find(s => s.id === selectedSOId);
+                    if (so && so.advance_payment_amount > 0) {
+                      return (
+                        <p className="text-xs text-green-600 mt-1">
+                          Advance of Rp {so.advance_payment_amount.toLocaleString('id-ID')} will be auto-applied to this invoice
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>

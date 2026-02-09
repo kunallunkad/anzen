@@ -3,6 +3,7 @@ import { BrowserRouter, useLocation, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
+import { FinanceProvider } from './contexts/FinanceContext';
 import { Login } from './components/Login';
 import { ToastContainer } from './components/ToastNotification';
 import { ConfirmDialogContainer } from './components/ConfirmDialog';
@@ -152,7 +153,9 @@ function App() {
       <AuthProvider>
         <LanguageProvider>
           <NavigationProvider>
-            <AppContent />
+            <FinanceProvider>
+              <AppContent />
+            </FinanceProvider>
           </NavigationProvider>
         </LanguageProvider>
       </AuthProvider>
