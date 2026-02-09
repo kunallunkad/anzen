@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Plus, Edit, Trash2, Search, FileText, Eye, X, Upload, DollarSign } from 'lucide-react';
 import { Modal } from '../Modal';
+import { SearchableSelect } from '../SearchableSelect';
 import { FileUpload } from '../FileUpload';
 import { showToast } from '../ToastNotification';
 
@@ -555,19 +556,12 @@ export function PurchaseInvoiceManager({ canManage }: PurchaseInvoiceManagerProp
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Supplier *
               </label>
-              <select
+              <SearchableSelect
                 value={formData.supplier_id}
-                onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Supplier</option>
-                {suppliers.map((supplier) => (
-                  <option key={supplier.id} value={supplier.id}>
-                    {supplier.company_name} {supplier.pkp_status && '(PKP)'}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setFormData({ ...formData, supplier_id: val })}
+                options={suppliers.map(s => ({ value: s.id, label: `${s.company_name}${s.pkp_status ? ' (PKP)' : ''}` }))}
+                placeholder="Select Supplier"
+              />
               {selectedSupplier && selectedSupplier.npwp && (
                 <p className="text-xs text-gray-500 mt-1">NPWP: {selectedSupplier.npwp}</p>
               )}

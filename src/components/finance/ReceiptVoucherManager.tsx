@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Plus, Eye, Search, ArrowDownCircle, Check, Edit2, Trash2, X, Printer } from 'lucide-react';
 import { Modal } from '../Modal';
+import { SearchableSelect } from '../SearchableSelect';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { showToast } from '../ToastNotification';
@@ -620,17 +621,12 @@ export function ReceiptVoucherManager({ canManage }: ReceiptVoucherManagerProps)
                   {customers.find(c => c.id === formData.customer_id)?.company_name || 'Unknown'}
                 </div>
               ) : (
-                <select
-                  required
+                <SearchableSelect
                   value={formData.customer_id}
-                  onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                >
-                  <option value="">Select customer</option>
-                  {customers.map(c => (
-                    <option key={c.id} value={c.id}>{c.company_name}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setFormData({ ...formData, customer_id: val })}
+                  options={customers.map(c => ({ value: c.id, label: c.company_name }))}
+                  placeholder="Select customer"
+                />
               )}
             </div>
           </div>

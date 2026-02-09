@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { DataTable } from '../components/DataTable';
 import { Modal } from '../components/Modal';
+import { SearchableSelect } from '../components/SearchableSelect';
 import { CreditNoteView } from '../components/CreditNoteView';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -577,19 +578,12 @@ export function CreditNotes() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Customer *
                 </label>
-                <select
+                <SearchableSelect
                   value={formData.customer_id}
-                  onChange={(e) => handleCustomerChange(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                >
-                  <option value="">Select Customer</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.company_name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => handleCustomerChange(val)}
+                  options={customers.map(c => ({ value: c.id, label: c.company_name }))}
+                  placeholder="Select Customer"
+                />
               </div>
 
               <div>

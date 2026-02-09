@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Plus, Trash2, X, FileText } from 'lucide-react';
+import { SearchableSelect } from './SearchableSelect';
 import { showToast } from './ToastNotification';
 import { showConfirm } from './ConfirmDialog';
 
@@ -558,19 +559,12 @@ export default function SalesOrderForm({ existingOrder, onSuccess, onCancel }: S
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t('sales.customer')} *</label>
-          <select
+          <SearchableSelect
             value={formData.customer_id}
-            onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })}
-            className="w-full border rounded-lg px-3 py-2"
-            required
-          >
-            <option value="">{t('common.filter')} {t('sales.customer')}</option>
-            {customers.map(customer => (
-              <option key={customer.id} value={customer.id}>
-                {customer.company_name}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => setFormData({ ...formData, customer_id: val })}
+            options={customers.map(c => ({ value: c.id, label: c.company_name }))}
+            placeholder={`${t('common.filter')} ${t('sales.customer')}`}
+          />
         </div>
 
         <div>

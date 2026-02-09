@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Layout } from '../components/Layout';
 import { Package, Plus, Eye, Edit, Lock, CheckCircle, AlertCircle } from 'lucide-react';
 import { Modal } from '../components/Modal';
+import { SearchableSelect } from '../components/SearchableSelect';
 import { showToast } from '../components/ToastNotification';
 import { showConfirm } from '../components/ConfirmDialog';
 
@@ -499,19 +500,12 @@ export default function ImportContainers() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Supplier <span className="text-red-500">*</span>
                   </label>
-                  <select
+                  <SearchableSelect
                     value={formData.supplier_id}
-                    onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    required
-                  >
-                    <option value="">Select Supplier</option>
-                    {suppliers.map((supplier) => (
-                      <option key={supplier.id} value={supplier.id}>
-                        {supplier.company_name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, supplier_id: val })}
+                    options={suppliers.map(s => ({ value: s.id, label: s.company_name }))}
+                    placeholder="Select Supplier"
+                  />
                 </div>
               </div>
 

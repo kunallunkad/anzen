@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Plus, Search, ArrowUpCircle, Printer } from 'lucide-react';
 import { Modal } from '../Modal';
+import { SearchableSelect } from '../SearchableSelect';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -351,17 +352,12 @@ export function PaymentVoucherManager({ canManage }: PaymentVoucherManagerProps)
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Supplier *</label>
-              <select
-                required
+              <SearchableSelect
                 value={formData.supplier_id}
-                onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              >
-                <option value="">Select supplier</option>
-                {suppliers.map(s => (
-                  <option key={s.id} value={s.id}>{s.company_name}</option>
-                ))}
-              </select>
+                onChange={(val) => setFormData({ ...formData, supplier_id: val })}
+                options={suppliers.map(s => ({ value: s.id, label: s.company_name }))}
+                placeholder="Select supplier"
+              />
             </div>
           </div>
 

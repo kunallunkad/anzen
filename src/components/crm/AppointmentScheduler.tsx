@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Calendar, Clock, MapPin, Users, Plus, Edit2, Trash2, Video, Phone } from 'lucide-react';
+import { SearchableSelect } from '../SearchableSelect';
 
 interface Appointment {
   id: string;
@@ -335,17 +336,12 @@ export function AppointmentScheduler({ customerId, leadId, onAppointmentCreated 
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Customer *
                   </label>
-                  <select
+                  <SearchableSelect
                     value={formData.customer_id}
-                    onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="">Select a customer...</option>
-                    {contacts.map(contact => (
-                      <option key={contact.id} value={contact.id}>{contact.company_name}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, customer_id: val })}
+                    options={contacts.map(c => ({ value: c.id, label: c.company_name }))}
+                    placeholder="Select a customer..."
+                  />
                 </div>
               )}
 

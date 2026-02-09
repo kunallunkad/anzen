@@ -6,6 +6,7 @@ import { Plus, Eye, Trash2, PackageX, AlertTriangle, Edit, CheckCircle, XCircle 
 import { showToast } from '../components/ToastNotification';
 import { showConfirm } from '../components/ConfirmDialog';
 import { Modal } from '../components/Modal';
+import { SearchableSelect } from '../components/SearchableSelect';
 import { DataTable } from '../components/DataTable';
 import { MaterialReturnView } from '../components/MaterialReturnView';
 
@@ -661,19 +662,12 @@ export default function MaterialReturns() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Customer *
                 </label>
-                <select
+                <SearchableSelect
                   value={formData.customer_id}
-                  onChange={(e) => handleCustomerChange(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                >
-                  <option value="">Select Customer</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.company_name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => handleCustomerChange(val)}
+                  options={customers.map(c => ({ value: c.id, label: c.company_name }))}
+                  placeholder="Select Customer"
+                />
               </div>
 
               <div>
