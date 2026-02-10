@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { DataTable } from '../DataTable';
 import { Modal } from '../Modal';
 import { Plus, Edit, Trash2, FileText, DollarSign, Calendar, AlertCircle } from 'lucide-react';
+import { formatDate } from '../../utils/dateFormat';
 
 interface VendorBill {
   id: string;
@@ -448,7 +449,7 @@ export function PayablesManager({ canManage }: PayablesManagerProps) {
     {
       key: 'bill_date',
       label: 'Bill Date',
-      render: (bill: VendorBill) => new Date(bill.bill_date).toLocaleDateString()
+      render: (bill: VendorBill) => formatDate(bill.bill_date)
     },
     {
       key: 'due_date',
@@ -459,7 +460,7 @@ export function PayablesManager({ canManage }: PayablesManagerProps) {
         const isOverdue = dueDate < new Date() && bill.payment_status !== 'paid';
         return (
           <span className={isOverdue ? 'text-red-600 font-medium' : ''}>
-            {dueDate.toLocaleDateString()}
+            {formatDate(bill.due_date)}
             {isOverdue && <AlertCircle className="w-3 h-3 inline ml-1" />}
           </span>
         );
@@ -511,7 +512,7 @@ export function PayablesManager({ canManage }: PayablesManagerProps) {
     {
       key: 'payment_date',
       label: 'Payment Date',
-      render: (payment: VendorPayment) => new Date(payment.payment_date).toLocaleDateString()
+      render: (payment: VendorPayment) => formatDate(payment.payment_date)
     },
     {
       key: 'amount',

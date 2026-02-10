@@ -12,6 +12,7 @@ import {
 import { TaskDetailModal } from '../components/tasks/TaskDetailModal';
 import { TaskFormModal } from '../components/tasks/TaskFormModal';
 import { SystemTaskService } from '../services/SystemTaskService';
+import { formatDate } from '../utils/dateFormat';
 
 interface Task {
   id: string;
@@ -267,7 +268,7 @@ export function Tasks() {
     } else if (diffDays < 7) {
       return <span className="text-yellow-600 font-medium">Due in {diffDays}d</span>;
     } else {
-      return <span className="text-gray-600">{date.toLocaleDateString()}</span>;
+      return <span className="text-gray-600">{formatDate(date)}</span>;
     }
   };
 

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check, Search } from 'lucide-react';
+import { formatDate } from '../utils/dateFormat';
 
 interface DCOption {
   challan_id: string;
@@ -137,7 +138,7 @@ export function DCMultiSelect({
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">{option.challan_number}</div>
                         <div className="text-xs text-gray-500">
-                          {new Date(option.challan_date).toLocaleDateString()} • {option.item_count} items pending
+                          {formatDate(option.challan_date)} • {option.item_count} items pending
                         </div>
                       </div>
                     </div>

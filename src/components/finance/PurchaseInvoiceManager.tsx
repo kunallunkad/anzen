@@ -5,6 +5,7 @@ import { Modal } from '../Modal';
 import { SearchableSelect } from '../SearchableSelect';
 import { FileUpload } from '../FileUpload';
 import { showToast } from '../ToastNotification';
+import { formatDate } from '../../utils/dateFormat';
 
 interface Supplier {
   id: string;
@@ -492,7 +493,7 @@ export function PurchaseInvoiceManager({ canManage }: PurchaseInvoiceManagerProp
                     {invoice.suppliers?.company_name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(invoice.invoice_date).toLocaleDateString()}
+                    {formatDate(invoice.invoice_date)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {invoice.currency}
@@ -965,7 +966,7 @@ export function PurchaseInvoiceManager({ canManage }: PurchaseInvoiceManagerProp
               </div>
               <div>
                 <p className="text-gray-600">Invoice Date:</p>
-                <p className="font-medium">{new Date(selectedInvoice.invoice_date).toLocaleDateString()}</p>
+                <p className="font-medium">{formatDate(selectedInvoice.invoice_date)}</p>
               </div>
               <div>
                 <p className="text-gray-600">Currency:</p>

@@ -7,6 +7,7 @@ import { showToast } from '../components/ToastNotification';
 import { showConfirm } from '../components/ConfirmDialog';
 import { Modal } from '../components/Modal';
 import { StockRejectionView } from '../components/StockRejectionView';
+import { formatDate } from '../utils/dateFormat';
 
 interface StockRejection {
   id: string;
@@ -496,7 +497,7 @@ export default function StockRejections() {
                     {rejection.rejection_number}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    {new Date(rejection.rejection_date).toLocaleDateString()}
+                    {formatDate(rejection.rejection_date)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
                     <div>{rejection.product.product_name}</div>

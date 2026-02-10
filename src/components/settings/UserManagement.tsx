@@ -4,6 +4,7 @@ import { UserPlus, Trash2, CheckCircle, XCircle, Mail, Lock, User as UserIcon, B
 import { Modal } from '../Modal';
 import { showToast } from '../ToastNotification';
 import { showConfirm } from '../ConfirmDialog';
+import { formatDate } from '../../utils/dateFormat';
 
 interface UserProfile {
   id: string;
@@ -326,7 +327,7 @@ export function UserManagement({ users, onRefresh }: UserManagementProps) {
                     {user.email}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Created: {new Date(user.created_at).toLocaleDateString()}
+                    Created: {formatDate(user.created_at)}
                   </p>
                 </div>
               </div>

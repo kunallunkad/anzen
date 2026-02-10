@@ -4,6 +4,7 @@ import { Plus, FileText, Trash2, Edit2 } from 'lucide-react';
 import { Modal } from './Modal';
 import { SearchableSelect } from './SearchableSelect';
 import { SourceDocuments } from './SourceDocuments';
+import { formatDate } from '../utils/dateFormat';
 
 interface ProductSource {
   id: string;
@@ -262,7 +263,7 @@ export function ProductSources({ productId, productName }: ProductSourcesProps) 
                     </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(source.created_at).toLocaleDateString()}
+                    {formatDate(source.created_at)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-2">

@@ -9,6 +9,7 @@ import { UserManagement } from '../components/settings/UserManagement';
 import { EmailTemplates } from '../components/settings/EmailTemplates';
 import { ExtractData } from '../components/settings/ExtractData';
 import { SuppliersManager } from '../components/settings/SuppliersManager';
+import { formatDate } from '../utils/dateFormat';
 
 interface AppSettings {
   id: string;
@@ -559,7 +560,7 @@ export function Settings() {
                   <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                     <p className="text-sm font-medium text-green-800 mb-2">Active Financial Year Period:</p>
                     <p className="text-lg font-bold text-green-900">
-                      {new Date(formData.financial_year_start).toLocaleDateString()} - {new Date(formData.financial_year_end).toLocaleDateString()}
+                      {formatDate(formData.financial_year_start)} - {formatDate(formData.financial_year_end)}
                     </p>
                   </div>
                 </div>

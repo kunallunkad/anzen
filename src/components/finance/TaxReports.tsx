@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { FileText, Download, Calendar, TrendingUp, TrendingDown } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { formatDate } from '../../utils/dateFormat';
 
 interface InputPPNRecord {
   month: string;
@@ -248,7 +249,7 @@ export function TaxReports() {
                       filteredInput.map((record, index) => (
                         <tr key={index} className="hover:bg-gray-50">
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                            {new Date(record.expense_date).toLocaleDateString()}
+                            {formatDate(record.expense_date)}
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                             {record.container_ref}
@@ -321,7 +322,7 @@ export function TaxReports() {
                       filteredOutput.map((record, index) => (
                         <tr key={index} className="hover:bg-gray-50">
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                            {new Date(record.invoice_date).toLocaleDateString()}
+                            {formatDate(record.invoice_date)}
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                             {record.invoice_number}

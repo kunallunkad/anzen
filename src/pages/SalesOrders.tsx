@@ -10,6 +10,7 @@ import SalesOrderForm from '../components/SalesOrderForm';
 import { ProformaInvoiceView } from '../components/ProformaInvoiceView';
 import { showToast } from '../components/ToastNotification';
 import { showConfirm } from '../components/ConfirmDialog';
+import { formatDate } from '../utils/dateFormat';
 
 interface Customer {
   id: string;
@@ -580,13 +581,13 @@ export default function SalesOrders() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{order.customer_po_number}</div>
-                      <div className="text-xs text-gray-500">{new Date(order.customer_po_date).toLocaleDateString()}</div>
+                      <div className="text-xs text-gray-500">{formatDate(order.customer_po_date)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(order.so_date).toLocaleDateString()}
+                      {formatDate(order.so_date)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {order.expected_delivery_date ? new Date(order.expected_delivery_date).toLocaleDateString() : '-'}
+                      {order.expected_delivery_date ? formatDate(order.expected_delivery_date) : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {formatCurrency(order.total_amount, order.currency || 'IDR')}

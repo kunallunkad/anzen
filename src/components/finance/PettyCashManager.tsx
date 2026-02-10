@@ -6,6 +6,7 @@ import { useFinance } from '../../contexts/FinanceContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { showToast } from '../ToastNotification';
 import { showConfirm } from '../ConfirmDialog';
+import { formatDate } from '../../utils/dateFormat';
 
 interface PettyCashDocument {
   id: string;
@@ -939,7 +940,7 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
                 return (
                   <tr key={tx.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(tx.transaction_date).toLocaleDateString()}
+                      {formatDate(tx.transaction_date)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2">
@@ -1157,7 +1158,7 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
                     <option value="">None</option>
                     {challans.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.challan_number} - {c.customers?.company_name} ({new Date(c.challan_date).toLocaleDateString()})
+                        {c.challan_number} - {c.customers?.company_name} ({formatDate(c.challan_date)})
                       </option>
                     ))}
                   </select>

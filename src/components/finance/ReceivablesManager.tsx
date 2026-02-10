@@ -4,6 +4,7 @@ import { DataTable } from '../DataTable';
 import { Modal } from '../Modal';
 import { TrendingUp, RefreshCw } from 'lucide-react';
 import { useNavigation } from '../../contexts/NavigationContext';
+import { formatDate } from '../../utils/dateFormat';
 
 interface SalesInvoice {
   id: string;
@@ -347,7 +348,7 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
     {
       key: 'invoice_date',
       label: 'Date',
-      render: (_val: any, inv: SalesInvoice) => new Date(inv.invoice_date).toLocaleDateString()
+      render: (_val: any, inv: SalesInvoice) => formatDate(inv.invoice_date)
     },
     {
       key: 'due_date',
@@ -358,7 +359,7 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
         const isOverdue = dueDate < today && inv.payment_status !== 'paid';
         return (
           <span className={isOverdue ? 'text-red-600 font-semibold' : ''}>
-            {dueDate.toLocaleDateString()}
+            {formatDate(inv.due_date)}
           </span>
         );
       }
@@ -408,7 +409,7 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
     {
       key: 'voucher_date',
       label: 'Date',
-      render: (_val: any, pay: ReceiptVoucher) => new Date(pay.voucher_date).toLocaleDateString()
+      render: (_val: any, pay: ReceiptVoucher) => formatDate(pay.voucher_date)
     },
     {
       key: 'customer',
@@ -684,7 +685,7 @@ export function ReceivablesManager({ canManage }: { canManage: boolean }) {
                         />
                         <div className="flex-1">
                           <div className="font-medium text-sm">{invoice.invoice_number}</div>
-                          <div className="text-xs text-gray-600">Date: {new Date(invoice.invoice_date).toLocaleDateString()}</div>
+                          <div className="text-xs text-gray-600">Date: {formatDate(invoice.invoice_date)}</div>
                           <div className="text-xs mt-1">Total: Rp {invoice.total_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                           <div className="text-xs text-orange-600 font-medium">Balance: Rp {balance.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         </div>

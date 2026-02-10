@@ -3,6 +3,7 @@ import { Bell, X, CheckCheck, AlertTriangle, Clock, Package, FileText, CheckSqua
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { showToast } from './ToastNotification';
+import { formatDate } from '../utils/dateFormat';
 
 interface Notification {
   id: string;
@@ -149,7 +150,7 @@ export function NotificationDropdown() {
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
+    return formatDate(date);
   };
 
   return (

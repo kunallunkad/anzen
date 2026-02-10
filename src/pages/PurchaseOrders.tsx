@@ -10,6 +10,7 @@ import { PurchaseOrderView } from '../components/PurchaseOrderView';
 import { SearchableSelect } from '../components/SearchableSelect';
 import { showToast } from '../components/ToastNotification';
 import { showConfirm } from '../components/ConfirmDialog';
+import { formatDate } from '../utils/dateFormat';
 
 interface Supplier {
   id: string;
@@ -601,7 +602,7 @@ export default function PurchaseOrders() {
                     {po.po_number}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(po.po_date).toLocaleDateString()}
+                    {formatDate(po.po_date)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {po.suppliers?.company_name}

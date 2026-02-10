@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { CheckSquare, Calendar, AlertTriangle, Package, TrendingUp, Edit2 } from 'lucide-react';
+import { formatDate } from '../utils/dateFormat';
 
 interface ImportRequirement {
   id: string;
@@ -195,7 +196,7 @@ export function ImportRequirementsTable({ requirements, onRefresh, canEdit }: Im
                       onClick={() => startEditing(req.id, 'required_delivery_date', req.required_delivery_date)}
                       className={`${canEdit ? 'cursor-pointer hover:bg-gray-100 px-2 py-1 rounded' : ''}`}
                     >
-                      <div className="text-sm">{new Date(req.required_delivery_date).toLocaleDateString()}</div>
+                      <div className="text-sm">{formatDate(req.required_delivery_date)}</div>
                       <div className={`text-xs ${getDeliveryColor(daysUntil)}`}>
                         {daysUntil < 0 ? `${Math.abs(daysUntil)} days overdue` : `${daysUntil} days`}
                       </div>

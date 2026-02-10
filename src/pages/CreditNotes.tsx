@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabase';
 import { Plus, Eye, Trash2, FileX, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import { showToast } from '../components/ToastNotification';
 import { showConfirm } from '../components/ConfirmDialog';
+import { formatDate } from '../utils/dateFormat';
 
 interface CreditNote {
   id: string;
@@ -445,7 +446,7 @@ export function CreditNotes() {
     {
       key: 'credit_note_date',
       label: 'Date',
-      render: (value: any, cn: CreditNote) => new Date(cn.credit_note_date).toLocaleDateString()
+      render: (value: any, cn: CreditNote) => formatDate(cn.credit_note_date)
     },
     {
       key: 'customer',
@@ -599,7 +600,7 @@ export function CreditNotes() {
                   <option value="">Select Invoice</option>
                   {invoices.map((invoice) => (
                     <option key={invoice.id} value={invoice.id}>
-                      {invoice.invoice_number} - {new Date(invoice.invoice_date).toLocaleDateString()} - Rp {invoice.total_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {invoice.invoice_number} - {formatDate(invoice.invoice_date)} - Rp {invoice.total_amount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </option>
                   ))}
                 </select>

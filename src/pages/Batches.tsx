@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabase';
 import { Plus, Edit, Trash2, AlertTriangle, Package, DollarSign, FileText, ExternalLink } from 'lucide-react';
 import { showToast } from '../components/ToastNotification';
 import { showConfirm } from '../components/ConfirmDialog';
+import { formatDate } from '../utils/dateFormat';
 
 interface Batch {
   id: string;
@@ -631,7 +632,7 @@ export function Batches() {
     {
       key: 'import_date',
       label: 'Import Date',
-      render: (value: any, batch: Batch) => new Date(batch.import_date).toLocaleDateString()
+      render: (value: any, batch: Batch) => formatDate(batch.import_date)
     },
     {
       key: 'stock',
@@ -744,7 +745,7 @@ export function Batches() {
           isExpired(batch) ? 'text-red-700 font-semibold' :
           isNearExpiry(batch) ? 'text-orange-600 font-semibold' : ''
         }>
-          {batch.expiry_date ? new Date(batch.expiry_date).toLocaleDateString() : 'N/A'}
+          {batch.expiry_date ? formatDate(batch.expiry_date) : 'N/A'}
         </span>
       )
     },
@@ -1406,7 +1407,7 @@ export function Batches() {
                       <span>•</span>
                       <span>{(doc.file_size / 1024).toFixed(1)} KB</span>
                       <span>•</span>
-                      <span>{new Date(doc.uploaded_at).toLocaleDateString()}</span>
+                      <span>{formatDate(doc.uploaded_at)}</span>
                     </div>
                   </div>
                   <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0" />
@@ -1456,7 +1457,7 @@ export function Batches() {
                           </span>
                         </div>
                         <div className="text-sm text-gray-600 space-y-0.5">
-                          <div><strong>Date:</strong> {new Date(txn.transaction_date).toLocaleDateString()}</div>
+                          <div><strong>Date:</strong> {formatDate(txn.transaction_date)}</div>
                           {txn.reference_number && (
                             <div><strong>Reference:</strong> {txn.reference_number}</div>
                           )}

@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase';
 import { Plus, Edit, Trash2, FileText, Eye, FileX } from 'lucide-react';
 import { showToast } from '../components/ToastNotification';
 import { showConfirm } from '../components/ConfirmDialog';
+import { formatDate } from '../utils/dateFormat';
 
 interface SalesInvoice {
   id: string;
@@ -1139,7 +1140,7 @@ export function Sales() {
     {
       key: 'invoice_date',
       label: t('common.date'),
-      render: (value: any, inv: SalesInvoice) => new Date(inv.invoice_date).toLocaleDateString()
+      render: (value: any, inv: SalesInvoice) => formatDate(inv.invoice_date)
     },
     {
       key: 'total_amount',

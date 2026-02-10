@@ -12,6 +12,7 @@ import { supabase } from '../lib/supabase';
 import { Plus, Trash2, Eye, Edit, FileText, CheckCircle, XCircle } from 'lucide-react';
 import { showToast } from '../components/ToastNotification';
 import { showConfirm } from '../components/ConfirmDialog';
+import { formatDate } from '../utils/dateFormat';
 
 interface DeliveryChallan {
   id: string;
@@ -895,7 +896,7 @@ export function DeliveryChallan() {
     {
       key: 'challan_date',
       label: 'Date',
-      render: (value: any, challan: DeliveryChallan) => new Date(challan.challan_date).toLocaleDateString()
+      render: (value: any, challan: DeliveryChallan) => formatDate(challan.challan_date)
     },
     {
       key: 'approval_status',

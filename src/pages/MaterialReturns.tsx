@@ -9,6 +9,7 @@ import { Modal } from '../components/Modal';
 import { SearchableSelect } from '../components/SearchableSelect';
 import { DataTable } from '../components/DataTable';
 import { MaterialReturnView } from '../components/MaterialReturnView';
+import { formatDate } from '../utils/dateFormat';
 
 interface MaterialReturn {
   id: string;
@@ -513,7 +514,7 @@ export default function MaterialReturns() {
     {
       key: 'return_date',
       label: 'Date',
-      render: (value: any, ret: MaterialReturn) => new Date(ret.return_date).toLocaleDateString()
+      render: (value: any, ret: MaterialReturn) => formatDate(ret.return_date)
     },
     {
       key: 'customer',
@@ -684,7 +685,7 @@ export default function MaterialReturns() {
                   <option value="">Select Delivery Challan</option>
                   {deliveryChallans.map((dc) => (
                     <option key={dc.id} value={dc.id}>
-                      {dc.challan_number} - {new Date(dc.challan_date).toLocaleDateString()}
+                      {dc.challan_number} - {formatDate(dc.challan_date)}
                     </option>
                   ))}
                 </select>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Calendar, ChevronLeft, ChevronRight, Clock, CheckCircle, AlertCircle, Plus, Users } from 'lucide-react';
 import { Modal } from '../Modal';
+import { formatDate } from '../../utils/dateFormat';
 
 interface Reminder {
   id: string;
@@ -503,7 +504,7 @@ export function ReminderCalendar({ onReminderCreated }: ReminderCalendarProps) {
           <div className="space-y-4">
             <div className={`p-3 rounded-lg border ${reminderTypeColors[selectedReminder.reminder_type as keyof typeof reminderTypeColors]}`}>
               <p className="font-semibold">{selectedReminder.title}</p>
-              <p className="text-sm mt-1">Due: {new Date(selectedReminder.due_date).toLocaleDateString()}</p>
+              <p className="text-sm mt-1">Due: {formatDate(selectedReminder.due_date)}</p>
             </div>
 
             {selectedReminder.description && (
@@ -645,7 +646,7 @@ function ReminderCard({
           )}
           <div className="flex items-center gap-2 mt-1">
             <span className={`text-xs ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-              {new Date(reminder.due_date).toLocaleDateString()}
+              {formatDate(reminder.due_date)}
             </span>
             {isOverdue && (
               <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">

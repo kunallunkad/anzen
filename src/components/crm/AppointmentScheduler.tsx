@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Calendar, Clock, MapPin, Users, Plus, Edit2, Trash2, Video, Phone } from 'lucide-react';
 import { SearchableSelect } from '../SearchableSelect';
+import { formatDate } from '../../utils/dateFormat';
 
 interface Appointment {
   id: string;
@@ -585,7 +586,7 @@ export function AppointmentScheduler({ customerId, leadId, onAppointmentCreated 
                       <div className="flex-1 min-w-0">
                         <h4 className="font-medium text-gray-700">{appointment.subject}</h4>
                         <p className="text-sm text-gray-500 mt-1">
-                          {formatAppointmentType(appointment.activity_type)} • {new Date(appointment.follow_up_date).toLocaleDateString()}
+                          {formatAppointmentType(appointment.activity_type)} • {formatDate(appointment.follow_up_date)}
                         </p>
                       </div>
                     </div>

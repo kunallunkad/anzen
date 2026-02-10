@@ -7,6 +7,7 @@ import { Modal } from '../components/Modal';
 import { SearchableSelect } from '../components/SearchableSelect';
 import { showToast } from '../components/ToastNotification';
 import { showConfirm } from '../components/ConfirmDialog';
+import { formatDate } from '../utils/dateFormat';
 
 interface Supplier {
   id: string;
@@ -418,7 +419,7 @@ export default function ImportContainers() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {new Date(container.import_date).toLocaleDateString()}
+                        {formatDate(container.import_date)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">

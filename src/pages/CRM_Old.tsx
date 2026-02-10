@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Plus, Edit, Trash2, Phone, Mail, MessageSquare, Calendar, CheckCircle, FileText, AlertCircle, TrendingUp, Star, Users } from 'lucide-react';
 import { QuotationManager } from '../components/crm/QuotationManager';
+import { formatDate } from '../utils/dateFormat';
 
 interface CRMLead {
   id: string;
@@ -574,7 +575,7 @@ export function CRM() {
                                     <div>
                                       <p className="font-medium text-sm">{activity.subject}</p>
                                       <p className="text-xs text-gray-500 mt-1">
-                                        {new Date(activity.created_at).toLocaleDateString()}
+                                        {formatDate(activity.created_at)}
                                       </p>
                                     </div>
                                     <button
@@ -591,7 +592,7 @@ export function CRM() {
                                   )}
                                   {activity.follow_up_date && (
                                     <p className="text-xs text-blue-600 mt-2">
-                                      Follow-up: {new Date(activity.follow_up_date).toLocaleDateString()}
+                                      Follow-up: {formatDate(activity.follow_up_date)}
                                     </p>
                                   )}
                                 </div>

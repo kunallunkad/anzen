@@ -5,6 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
 import { Package, TrendingUp, AlertTriangle, Calendar } from 'lucide-react';
 import { useNavigation } from '../contexts/NavigationContext';
+import { formatDate } from '../utils/dateFormat';
 
 interface StockSummary {
   product_id: string;
@@ -223,7 +224,7 @@ export function Stock() {
             isNearExpiry(item.nearest_expiry_date) ? 'text-orange-600 font-semibold' :
             'text-gray-700'
           }`}>
-            {new Date(item.nearest_expiry_date).toLocaleDateString()}
+            {formatDate(item.nearest_expiry_date)}
             {isNearExpiry(item.nearest_expiry_date) && (
               <AlertTriangle className="w-3 h-3 inline ml-1" />
             )}
@@ -273,7 +274,7 @@ export function Stock() {
       label: t('stock.imported'),
       render: (value: any, batch: DetailedBatch) => (
         <span className="text-sm text-gray-600">
-          {new Date(batch.import_date).toLocaleDateString()}
+          {formatDate(batch.import_date)}
         </span>
       )
     },
@@ -286,7 +287,7 @@ export function Stock() {
           isNearExpiry(batch.expiry_date) ? 'text-orange-600 font-semibold' :
           'text-gray-700'
         }`}>
-          {batch.expiry_date ? new Date(batch.expiry_date).toLocaleDateString() : '-'}
+          {batch.expiry_date ? formatDate(batch.expiry_date) : '-'}
         </span>
       )
     },

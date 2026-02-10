@@ -9,6 +9,7 @@ import { Plus, TrendingUp, TrendingDown, RefreshCw, RotateCcw, AlertTriangle, Pa
 import { showToast } from '../components/ToastNotification';
 import MaterialReturns from './MaterialReturns';
 import StockRejections from './StockRejections';
+import { formatDate } from '../utils/dateFormat';
 
 type TabType = 'transactions' | 'returns' | 'rejections';
 
@@ -368,7 +369,7 @@ export function Inventory() {
     {
       key: 'transaction_date',
       label: t('common.date'),
-      render: (value: any, tx: InventoryTransaction) => new Date(tx.transaction_date).toLocaleDateString()
+      render: (value: any, tx: InventoryTransaction) => formatDate(tx.transaction_date)
     },
     {
       key: 'transaction_type',
@@ -431,7 +432,7 @@ export function Inventory() {
     {
       key: 'return_date',
       label: 'Date',
-      render: (value: any, ret: MaterialReturn) => new Date(ret.return_date).toLocaleDateString()
+      render: (value: any, ret: MaterialReturn) => formatDate(ret.return_date)
     },
     {
       key: 'customer',
@@ -483,7 +484,7 @@ export function Inventory() {
     {
       key: 'rejection_date',
       label: 'Date',
-      render: (value: any, rej: StockRejection) => new Date(rej.rejection_date).toLocaleDateString()
+      render: (value: any, rej: StockRejection) => formatDate(rej.rejection_date)
     },
     {
       key: 'product',

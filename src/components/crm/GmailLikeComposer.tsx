@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { Mail, Send, Paperclip, X, FileText, Loader, ChevronDown, Sparkles } from 'lucide-react';
 import { Modal } from '../Modal';
 import DOMPurify from 'dompurify';
+import { formatDate } from '../../utils/dateFormat';
 
 interface Inquiry {
   id: string;
@@ -77,7 +78,7 @@ export function GmailLikeComposer({ isOpen, onClose, inquiry, replyTo }: GmailLi
       const quotedBody = `
         <br><br>
         <div style="border-left: 3px solid #ccc; padding-left: 15px; margin-left: 10px; color: #666;">
-          <p><strong>On ${new Date().toLocaleDateString()}, ${replyTo.from_email} wrote:</strong></p>
+          <p><strong>On ${formatDate(new Date())}, ${replyTo.from_email} wrote:</strong></p>
           ${replyTo.body}
         </div>
       `;

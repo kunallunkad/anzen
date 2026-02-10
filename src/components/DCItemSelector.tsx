@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, CheckSquare, Square } from 'lucide-react';
+import { formatDate } from '../utils/dateFormat';
 
 interface DCItem {
   dc_item_id: string;
@@ -109,7 +110,7 @@ export function DCItemSelector({
                       {dc.challan_number}
                     </div>
                     <div className="text-sm text-gray-500">
-                      {new Date(dc.challan_date).toLocaleDateString()} • {selectedCount}/{dc.items.length} items selected
+                      {formatDate(dc.challan_date)} • {selectedCount}/{dc.items.length} items selected
                     </div>
                   </div>
 

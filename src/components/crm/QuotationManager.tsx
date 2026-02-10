@@ -6,6 +6,7 @@ import { Modal } from '../Modal';
 import { Plus, Edit, Trash2, FileText, Send, Check, X, Clock } from 'lucide-react';
 import { showToast } from '../ToastNotification';
 import { showConfirm } from '../ConfirmDialog';
+import { formatDate } from '../../utils/dateFormat';
 
 interface Product {
   id: string;
@@ -400,7 +401,7 @@ export function QuotationManager({ leadId, customerId, canManage }: QuotationMan
     {
       key: 'quotation_date',
       label: 'Date',
-      render: (q: Quotation) => new Date(q.quotation_date).toLocaleDateString()
+      render: (q: Quotation) => formatDate(q.quotation_date)
     },
     {
       key: 'valid_until',
@@ -410,7 +411,7 @@ export function QuotationManager({ leadId, customerId, canManage }: QuotationMan
         const isExpired = validDate < new Date() && q.status !== 'accepted';
         return (
           <span className={isExpired ? 'text-red-600 font-medium' : ''}>
-            {validDate.toLocaleDateString()}
+            {formatDate(q.valid_until)}
           </span>
         );
       }

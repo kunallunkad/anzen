@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { FileText, Upload, X, ExternalLink, Trash2, Download } from 'lucide-react';
 import { Modal } from './Modal';
+import { formatDate } from '../utils/dateFormat';
 
 interface SourceDocument {
   id: string;
@@ -336,7 +337,7 @@ export function SourceDocuments({
                         </>
                       )}
                       <span>•</span>
-                      <span>{new Date(doc.uploaded_at).toLocaleDateString()}</span>
+                      <span>{formatDate(doc.uploaded_at)}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
