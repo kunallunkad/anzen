@@ -127,7 +127,7 @@ export function RevenueChart() {
           </AreaChart>
         </ResponsiveContainer>
       ) : (
-        <div className="h-60 flex items-center justify-center text-gray-400 text-sm">No revenue data available</div>
+        <div className="h-32 flex items-center justify-center text-gray-400 text-sm">No revenue data available</div>
       )}
     </div>
   );

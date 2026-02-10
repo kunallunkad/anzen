@@ -114,7 +114,7 @@ export function SalesPipelineChart() {
           </BarChart>
         </ResponsiveContainer>
       ) : (
-        <div className="h-60 flex items-center justify-center text-gray-400 text-sm">No sales order data</div>
+        <div className="h-32 flex items-center justify-center text-gray-400 text-sm">No sales order data</div>
       )}
     </div>
   );

@@ -292,7 +292,7 @@ export function Dashboard() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 md:gap-3">
               {statCards.map((card: any, index) => {
                 const Icon = card.icon;
                 const colors = colorClasses[card.color];
@@ -300,23 +300,23 @@ export function Dashboard() {
                 return (
                   <div
                     key={index}
-                    className={`${colors.bg} rounded-xl shadow-sm border border-gray-100/50 p-3 md:p-4 transition-all hover:shadow-md hover:-translate-y-0.5 ${isClickable ? 'cursor-pointer' : ''}`}
+                    className={`${colors.bg} rounded-lg shadow-sm border border-gray-100/50 p-2.5 transition-all hover:shadow-md hover:-translate-y-0.5 ${isClickable ? 'cursor-pointer' : ''}`}
                     onClick={() => isClickable && setCurrentPage(card.link)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="min-w-0 flex-1">
-                        <p className={`text-xs font-medium ${card.color === 'red-gradient' ? 'text-white/80' : 'text-gray-600'} truncate`}>{card.title}</p>
-                        <p className={`text-xl md:text-2xl font-bold ${colors.text} mt-1`}>
+                        <p className={`text-[10px] font-medium ${card.color === 'red-gradient' ? 'text-white/80' : 'text-gray-600'} truncate`}>{card.title}</p>
+                        <p className={`text-lg md:text-xl font-bold ${colors.text} mt-0.5`}>
                           {card.value}
                         </p>
                         {card.subtitle && (
-                          <p className={`text-xs mt-0.5 ${card.color === 'red-gradient' ? 'text-white/90' : 'text-gray-500'} truncate`}>
+                          <p className={`text-[10px] mt-0.5 ${card.color === 'red-gradient' ? 'text-white/90' : 'text-gray-500'} truncate`}>
                             {card.subtitle}
                           </p>
                         )}
                       </div>
-                      <div className={`${colors.icon} p-2 rounded-full flex-shrink-0 ml-2`}>
-                        <Icon className={`w-4 h-4 ${colors.text}`} />
+                      <div className={`${colors.icon} p-1.5 rounded-full flex-shrink-0 ml-1.5`}>
+                        <Icon className={`w-3.5 h-3.5 ${colors.text}`} />
                       </div>
                     </div>
                   </div>
@@ -325,20 +325,20 @@ export function Dashboard() {
             </div>
 
             {(isAdmin || isAccounts) && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <RevenueChart />
                 <SalesPipelineChart />
               </div>
             )}
             {isSales && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <SalesPipelineChart />
               </div>
             )}
           </>
         )}
 
-        <div className={`grid grid-cols-1 ${(isAdmin || isAccounts) ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2'} gap-6`}>
+        <div className={`grid grid-cols-1 ${(isAdmin || isAccounts) ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
           {(isAdmin || isAccounts) && (
             <div className="md:col-span-1 lg:col-span-1">
               <PaymentOverview />

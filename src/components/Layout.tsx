@@ -215,13 +215,28 @@ export function Layout({ children }: LayoutProps) {
               )}
             </div>
 
-            <div className="flex-1" />
+            <div className="flex-1 hidden md:flex items-center justify-center px-2">
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
+                <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                <input
+                  type="date"
+                  value={dateRange.startDate}
+                  onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
+                  className="px-1.5 py-0.5 text-xs border border-gray-200 rounded bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <span className="text-xs text-gray-400">to</span>
+                <input
+                  type="date"
+                  value={dateRange.endDate}
+                  onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
+                  className="px-1.5 py-0.5 text-xs border border-gray-200 rounded bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
 
-            <div className="hidden md:flex items-center gap-2 mr-4 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
-              <Calendar className="w-4 h-4 text-gray-600" />
-              <span className="text-sm font-medium text-gray-700">
-                {formatDate(new Date())}
-              </span>
+            <div className="hidden lg:flex items-center gap-2 mr-3 text-xs text-gray-600">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>{formatDate(new Date())}</span>
             </div>
 
             <div className="flex items-center gap-3">
