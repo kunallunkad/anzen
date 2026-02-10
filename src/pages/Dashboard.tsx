@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Layout } from '../components/Layout';
+import { Layout, getRandomFallbackQuote, Quote } from '../components/Layout';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '../contexts/NavigationContext';
@@ -17,6 +17,7 @@ import {
   Zap,
   UserCircle,
   ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -54,9 +55,11 @@ export function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [quote, setQuote] = useState<Quote>({ content: 'Welcome back!', author: '' });
 
   useEffect(() => {
     loadDashboardData();
+    setQuote(getRandomFallbackQuote());
   }, []);
 
   const loadDashboardData = async () => {
@@ -172,21 +175,14 @@ export function Dashboard() {
     });
   }
   if (isAdmin || isSales) {
+    const totalApprovals = stats.pendingSalesOrders + stats.pendingDeliveryChallans;
     statCards.push({
-      title: 'Pending PO Approvals',
-      value: stats.pendingSalesOrders,
-      icon: FileText,
-      color: 'yellow',
-      link: 'sales-orders'
-    });
-  }
-  if (isAdmin) {
-    statCards.push({
-      title: 'Pending DC Approvals',
-      value: stats.pendingDeliveryChallans,
+      title: 'Approvals Pending',
+      value: totalApprovals,
+      subtitle: `${stats.pendingSalesOrders} PO, ${stats.pendingDeliveryChallans} DC`,
       icon: ClipboardCheck,
       color: 'yellow',
-      link: 'delivery-challan'
+      link: 'sales-orders'
     });
   }
   if (isAdmin || isAccounts) {
@@ -260,10 +256,18 @@ export function Dashboard() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{t('dashboard.title')}</h1>
-          <p className="text-gray-600 mt-1">Welcome to your pharma trading management system</p>
+      <div className="space-y-4">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
+          <h1 className="text-2xl font-bold text-gray-900">
+            Welcome, {profile?.full_name || profile?.username || 'User'}!
+          </h1>
+          <div className="flex items-start gap-2 mt-2">
+            <Sparkles className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-gray-600 italic">
+              "{quote.content}"
+              {quote.author && <span className="text-gray-500"> — {quote.author}</span>}
+            </p>
+          </div>
         </div>
 
         {error ? (

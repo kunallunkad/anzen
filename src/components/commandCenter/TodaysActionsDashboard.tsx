@@ -176,11 +176,11 @@ export function TodaysActionsDashboard({ onActionClick }: TodaysActionsDashboard
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="animate-pulse space-y-4">
+      <div className="bg-white rounded-lg shadow p-3">
+        <div className="animate-pulse space-y-2">
           <div className="h-4 bg-gray-200 rounded w-1/3" />
-          <div className="h-10 bg-gray-200 rounded" />
-          <div className="h-10 bg-gray-200 rounded" />
+          <div className="h-8 bg-gray-200 rounded" />
+          <div className="h-8 bg-gray-200 rounded" />
         </div>
       </div>
     );
@@ -190,20 +190,19 @@ export function TodaysActionsDashboard({ onActionClick }: TodaysActionsDashboard
 
   if (totalActions === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-blue-600" />
+      <div className="bg-white rounded-lg shadow p-3">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-blue-600" />
             Today's Actions
           </h2>
-          <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">
+          <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">
             All Clear!
           </span>
         </div>
-        <div className="text-center py-8">
-          <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-3" />
-          <p className="text-gray-600">No pending actions for today</p>
-          <p className="text-sm text-gray-500 mt-1">Great job staying on top of everything!</p>
+        <div className="text-center py-4">
+          <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-2" />
+          <p className="text-sm text-gray-600">No pending actions</p>
         </div>
       </div>
     );
@@ -211,30 +210,30 @@ export function TodaysActionsDashboard({ onActionClick }: TodaysActionsDashboard
 
   return (
     <div className="bg-white rounded-lg shadow">
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-2.5 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-blue-600" />
+          <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-blue-600" />
             Today's Actions
           </h2>
-          <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
+          <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
             {totalActions} {totalActions === 1 ? 'Action' : 'Actions'}
           </span>
         </div>
       </div>
 
-      <div className="p-4 space-y-3">
+      <div className="p-2.5 space-y-2">
         {(pendingSalesOrders > 0 || pendingDeliveryChallans > 0) && (
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <AlertCircle className="w-4 h-4 text-yellow-600" />
-              <h3 className="text-sm font-semibold text-yellow-600">Pending Approvals</h3>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <AlertCircle className="w-3.5 h-3.5 text-yellow-600" />
+              <h3 className="text-xs font-semibold text-yellow-600">Pending Approvals</h3>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {pendingSalesOrders > 0 && (
                 <div
                   onClick={() => setCurrentPage('sales-orders')}
-                  className="flex items-start gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg hover:shadow-md transition cursor-pointer"
+                  className="flex items-start gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg hover:shadow-md transition cursor-pointer"
                 >
                   <FileText className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -251,7 +250,7 @@ export function TodaysActionsDashboard({ onActionClick }: TodaysActionsDashboard
               {pendingDeliveryChallans > 0 && (
                 <div
                   onClick={() => setCurrentPage('delivery-challan')}
-                  className="flex items-start gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg hover:shadow-md transition cursor-pointer"
+                  className="flex items-start gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg hover:shadow-md transition cursor-pointer"
                 >
                   <ClipboardCheck className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -271,11 +270,11 @@ export function TodaysActionsDashboard({ onActionClick }: TodaysActionsDashboard
 
         {overdueReminders.length > 0 && (
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <AlertCircle className="w-4 h-4 text-red-600" />
-              <h3 className="text-sm font-semibold text-red-600">Overdue ({overdueReminders.length})</h3>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <AlertCircle className="w-3.5 h-3.5 text-red-600" />
+              <h3 className="text-xs font-semibold text-red-600">Overdue ({overdueReminders.length})</h3>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {overdueReminders.map((reminder) => {
                 const Icon = getReminderIcon(reminder.reminder_type);
                 const color = getReminderColor(reminder.reminder_type);
@@ -283,7 +282,7 @@ export function TodaysActionsDashboard({ onActionClick }: TodaysActionsDashboard
                 return (
                   <div
                     key={reminder.id}
-                    className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg hover:shadow-sm transition"
+                    className="flex items-start gap-2 p-2 bg-red-50 border border-red-200 rounded-lg hover:shadow-sm transition"
                   >
                     <Icon className={`w-4 h-4 ${color} mt-0.5 flex-shrink-0`} />
                     <div className="flex-1 min-w-0">
@@ -316,12 +315,12 @@ export function TodaysActionsDashboard({ onActionClick }: TodaysActionsDashboard
         {todayReminders.length > 0 && (
           <div>
             {overdueReminders.length > 0 && (
-              <div className="flex items-center gap-2 mb-2 mt-4">
-                <Clock className="w-4 h-4 text-blue-600" />
-                <h3 className="text-sm font-semibold text-blue-600">Today ({todayReminders.length})</h3>
+              <div className="flex items-center gap-1.5 mb-1.5 mt-2">
+                <Clock className="w-3.5 h-3.5 text-blue-600" />
+                <h3 className="text-xs font-semibold text-blue-600">Today ({todayReminders.length})</h3>
               </div>
             )}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {todayReminders.map((reminder) => {
                 const Icon = getReminderIcon(reminder.reminder_type);
                 const color = getReminderColor(reminder.reminder_type);
@@ -329,7 +328,7 @@ export function TodaysActionsDashboard({ onActionClick }: TodaysActionsDashboard
                 return (
                   <div
                     key={reminder.id}
-                    className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg hover:shadow-sm transition"
+                    className="flex items-start gap-2 p-2 bg-blue-50 border border-blue-200 rounded-lg hover:shadow-sm transition"
                   >
                     <Icon className={`w-4 h-4 ${color} mt-0.5 flex-shrink-0`} />
                     <div className="flex-1 min-w-0">
@@ -364,10 +363,10 @@ export function TodaysActionsDashboard({ onActionClick }: TodaysActionsDashboard
       </div>
 
       {totalActions > 5 && (
-        <div className="p-3 border-t border-gray-200">
-          <button className="w-full flex items-center justify-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium">
-            <span>View All Actions</span>
-            <ChevronRight className="w-4 h-4" />
+        <div className="p-2 border-t border-gray-200">
+          <button className="w-full flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium">
+            <span>View All</span>
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
       )}

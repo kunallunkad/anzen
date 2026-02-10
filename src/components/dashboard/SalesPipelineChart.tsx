@@ -76,24 +76,24 @@ export function SalesPipelineChart() {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+      <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Sales Pipeline</h3>
-          <p className="text-sm text-gray-500 mt-0.5">Active orders by status</p>
+          <h3 className="text-sm font-semibold text-gray-900">Sales Pipeline</h3>
+          <p className="text-xs text-gray-500 mt-0.5">Active orders by status</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right">
             <p className="text-xs text-gray-500">Total Orders</p>
             <p className="text-sm font-bold text-gray-900">{totalOrders}</p>
           </div>
-          <div className="bg-blue-50 p-2 rounded-lg">
-            <Target className="w-5 h-5 text-blue-600" />
+          <div className="bg-blue-50 p-1.5 rounded-lg">
+            <Target className="w-4 h-4 text-blue-600" />
           </div>
         </div>
       </div>
       {data.length > 0 ? (
-        <ResponsiveContainer width="100%" height={240}>
+        <ResponsiveContainer width="100%" height={160}>
           <BarChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
             <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#6b7280' }} tickLine={false} axisLine={false} />

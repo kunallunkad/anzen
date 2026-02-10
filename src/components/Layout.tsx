@@ -4,6 +4,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useFinance } from '../contexts/FinanceContext';
 import { NotificationDropdown } from './NotificationDropdown';
+import { formatDate } from '../utils/dateFormat';
 import {
   LayoutDashboard,
   Package,
@@ -32,12 +33,12 @@ import {
 } from 'lucide-react';
 import logo from '../assets/Untitled-1.svg';
 
-interface Quote {
+export interface Quote {
   content: string;
   author: string;
 }
 
-const fallbackQuotes: Quote[] = [
+export const fallbackQuotes: Quote[] = [
   { content: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
   { content: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
   { content: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
@@ -70,7 +71,7 @@ const fallbackQuotes: Quote[] = [
   { content: "Sometimes later becomes never. Do it now.", author: "Unknown" }
 ];
 
-const getRandomFallbackQuote = (): Quote => {
+export const getRandomFallbackQuote = (): Quote => {
   const randomIndex = Math.floor(Math.random() * fallbackQuotes.length);
   return fallbackQuotes[randomIndex];
 };
@@ -85,23 +86,10 @@ export function Layout({ children }: LayoutProps) {
   const { language, setLanguage, t } = useLanguage();
   const { currentPage, setCurrentPage, sidebarCollapsed, setSidebarCollapsed } = useNavigation();
   const { dateRange, setDateRange } = useFinance();
-  const [quote, setQuote] = useState<Quote>({ content: 'Welcome back!', author: '' });
 
   // Auto-collapse sidebar for specific pages
   const autoCollapsiblePages = ['crm', 'command-center', 'finance'];
   const shouldAutoCollapse = autoCollapsiblePages.includes(currentPage);
-
-  // Use fallback quotes only (removed external API to clean console)
-  const fetchQuote = () => {
-    setQuote(getRandomFallbackQuote());
-  };
-
-  // Fetch quote on mount and rotate every 5 minutes
-  useEffect(() => {
-    fetchQuote();
-    const interval = setInterval(fetchQuote, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Automatically collapse sidebar when entering CRM or Command Center
   useEffect(() => {
@@ -227,32 +215,14 @@ export function Layout({ children }: LayoutProps) {
               )}
             </div>
 
-            <div className="flex-1 hidden md:flex items-center justify-center px-4 gap-4">
-              <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 flex-shrink-0">
-                <Calendar className="w-3.5 h-3.5 text-gray-500" />
-                <input
-                  type="date"
-                  value={dateRange.startDate}
-                  onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
-                  className="px-1.5 py-0.5 text-xs border border-gray-200 rounded bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <span className="text-xs text-gray-400">to</span>
-                <input
-                  type="date"
-                  value={dateRange.endDate}
-                  onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
-                  className="px-1.5 py-0.5 text-xs border border-gray-200 rounded bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div className="flex items-center gap-2 text-gray-500 italic min-w-0">
-                <Sparkles className="w-3 h-3 text-yellow-500 flex-shrink-0" />
-                <p className="line-clamp-1 text-sm">
-                  {`"${quote.content}"`}
-                </p>
-              </div>
-            </div>
+            <div className="flex-1" />
 
-            <div className="flex-1 md:hidden" />
+            <div className="hidden md:flex items-center gap-2 mr-4 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
+              <Calendar className="w-4 h-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">
+                {formatDate(new Date())}
+              </span>
+            </div>
 
             <div className="flex items-center gap-3">
               <NotificationDropdown />

@@ -86,13 +86,13 @@ export function RevenueChart() {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+      <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Revenue Trend</h3>
-          <p className="text-sm text-gray-500 mt-0.5">Last 6 months</p>
+          <h3 className="text-sm font-semibold text-gray-900">Revenue Trend</h3>
+          <p className="text-xs text-gray-500 mt-0.5">Last 6 months</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className="text-right">
             <p className="text-xs text-gray-500">Total Revenue</p>
             <p className="text-sm font-bold text-gray-900">Rp {formatValue(totalRevenue)}</p>
@@ -101,13 +101,13 @@ export function RevenueChart() {
             <p className="text-xs text-gray-500">Invoices</p>
             <p className="text-sm font-bold text-gray-900">{totalInvoices}</p>
           </div>
-          <div className="bg-emerald-50 p-2 rounded-lg">
-            <TrendingUp className="w-5 h-5 text-emerald-600" />
+          <div className="bg-emerald-50 p-1.5 rounded-lg">
+            <TrendingUp className="w-4 h-4 text-emerald-600" />
           </div>
         </div>
       </div>
       {data.length > 0 ? (
-        <ResponsiveContainer width="100%" height={240}>
+        <ResponsiveContainer width="100%" height={160}>
           <AreaChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
