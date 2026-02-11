@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { showToast } from '../ToastNotification';
 import { Modal } from '../Modal';
+import { parseIndonesianNumber, formatNumber } from '../../utils/currency';
 
 interface Account {
   id: string;
@@ -508,22 +509,18 @@ export function GeneralJournalEntry({ canManage, onNavigateToLedger }: GeneralJo
                     </td>
                     <td className="px-4 py-2">
                       <input
-                        type="number"
-                        min="0"
-                        step="any"
+                        type="text"
                         value={line.debit || ''}
-                        onChange={e => updateLine(idx, 'debit', parseFloat(e.target.value) || 0)}
+                        onChange={e => updateLine(idx, 'debit', parseIndonesianNumber(e.target.value))}
                         placeholder="0"
                         className="w-full px-2.5 py-1.5 text-sm text-right border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 tabular-nums"
                       />
                     </td>
                     <td className="px-4 py-2">
                       <input
-                        type="number"
-                        min="0"
-                        step="any"
+                        type="text"
                         value={line.credit || ''}
-                        onChange={e => updateLine(idx, 'credit', parseFloat(e.target.value) || 0)}
+                        onChange={e => updateLine(idx, 'credit', parseIndonesianNumber(e.target.value))}
                         placeholder="0"
                         className="w-full px-2.5 py-1.5 text-sm text-right border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 tabular-nums"
                       />
