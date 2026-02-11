@@ -2245,10 +2245,9 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
           setAvailableJournals([]);
         }}
         title="Record Transaction"
-        size="xl"
       >
         {recordingLine && (
-          <div className="space-y-4">
+          <div className="space-y-4 pb-32">
             <div className="p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">Date:</span>
@@ -2276,94 +2275,63 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
               )}
             </div>
 
-            {/* Link Journal Entry Option */}
-            <div className="border-t border-b border-gray-200 py-3">
-              <button
-                onClick={() => {
-                  setLinkJournalEntry(!linkJournalEntry);
-                  if (!linkJournalEntry) {
-                    loadAvailableJournals(recordingLine);
-                    setLinkToExpense(false);
-                    setLinkExistingReceipt(false);
-                  }
-                }}
-                className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                  linkJournalEntry
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {linkJournalEntry ? '✓ Linking to Journal Entry' : '🔗 Link to Existing Journal Entry'}
-              </button>
-            </div>
-
-            {linkJournalEntry ? (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-500">
-                  Select a journal entry that matches this bank transaction (±7 days, matching amount)
-                </p>
-                <div className="max-h-64 overflow-y-auto border rounded-lg divide-y">
-                  {availableJournals.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500 text-sm">
-                      No matching journal entries found
-                    </div>
-                  ) : (
-                    availableJournals.map(journal => (
-                      <button
-                        key={journal.id}
-                        onClick={() => handleLinkJournalEntry(recordingLine, journal.id)}
-                        className="w-full p-3 text-left hover:bg-purple-50 transition-colors"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-sm font-medium text-purple-600">
-                                {journal.entry_number}
-                              </span>
-                              <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
-                                {journal.source_module === 'manual' ? 'Manual' : journal.source_module}
-                              </span>
-                            </div>
-                            <p className="text-sm text-gray-700 mt-1">{journal.description}</p>
-                            <div className="text-xs text-gray-400 mt-1">
-                              {new Date(journal.entry_date).toLocaleDateString('id-ID')}
-                            </div>
-                          </div>
-                          <div className="text-right ml-4">
-                            <div className="text-xs text-gray-500">Amount</div>
-                            <div className="font-medium text-sm">
-                              Rp {(journal.total_debit || journal.total_credit).toLocaleString('id-ID', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-            ) : (
-              <>
-                {recordingLine.debit > 0 && (
+            {recordingLine.debit > 0 && (
               <div>
                 <div className="flex gap-2 mb-3">
                   <button
-                    onClick={() => setLinkToExpense(false)}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium ${!linkToExpense ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                    onClick={() => { setLinkToExpense(false); setLinkJournalEntry(false); }}
+                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium ${!linkToExpense && !linkJournalEntry ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
                   >
                     Create New Expense
                   </button>
                   <button
-                    onClick={() => setLinkToExpense(true)}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium ${linkToExpense ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                    onClick={() => { setLinkToExpense(true); setLinkJournalEntry(false); }}
+                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium ${linkToExpense && !linkJournalEntry ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
                   >
-                    Link to Existing Expense
+                    Link Expense
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLinkJournalEntry(true);
+                      setLinkToExpense(false);
+                      loadAvailableJournals(recordingLine);
+                    }}
+                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium ${linkJournalEntry ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                  >
+                    Link Journal
                   </button>
                 </div>
 
-                {!linkToExpense ? (
+                {linkJournalEntry ? (
+                  <div className="space-y-3">
+                    <p className="text-xs text-gray-500">Select a journal entry to link to this bank transaction (matching amount, +/-7 days).</p>
+                    <div className="max-h-48 overflow-y-auto border rounded-lg divide-y">
+                      {availableJournals.length === 0 ? (
+                        <div className="p-3 text-center text-gray-500 text-sm">No matching journal entries found</div>
+                      ) : (
+                        availableJournals.map(j => (
+                          <button
+                            key={j.id}
+                            onClick={() => handleLinkJournalEntry(recordingLine, j.id)}
+                            className="w-full p-2 text-left hover:bg-blue-50 text-sm flex justify-between items-center"
+                          >
+                            <div>
+                              <span className="font-mono font-medium text-blue-600">{j.entry_number}</span>
+                              <span className="text-xs ml-2 px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                {j.source_module === 'manual' ? 'Manual' : j.source_module}
+                              </span>
+                              <div className="text-xs text-gray-500 mt-0.5">{j.description}</div>
+                              <div className="text-xs text-gray-400">{new Date(j.entry_date).toLocaleDateString('id-ID')}</div>
+                            </div>
+                            <span className="font-medium text-green-600">
+                              Rp {(j.total_debit || j.total_credit).toLocaleString('id-ID', { minimumFractionDigits: 2 })}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ) : !linkToExpense ? (
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
@@ -2502,16 +2470,30 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-medium">Record as Receipt</h4>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLinkExistingReceipt(!linkExistingReceipt);
-                      if (!linkExistingReceipt) loadExistingReceipts(recordingLine);
-                    }}
-                    className="text-xs text-blue-600 hover:underline"
-                  >
-                    {linkExistingReceipt ? 'Create New Receipt' : 'Link Existing Receipt'}
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLinkExistingReceipt(!linkExistingReceipt);
+                        setLinkJournalEntry(false);
+                        if (!linkExistingReceipt) loadExistingReceipts(recordingLine);
+                      }}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      {linkExistingReceipt ? 'Create New Receipt' : 'Link Existing Receipt'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLinkJournalEntry(!linkJournalEntry);
+                        setLinkExistingReceipt(false);
+                        if (!linkJournalEntry) loadAvailableJournals(recordingLine);
+                      }}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      {linkJournalEntry ? 'Create New Receipt' : 'Link Journal Entry'}
+                    </button>
+                  </div>
                 </div>
 
                 {linkExistingReceipt ? (
@@ -2534,6 +2516,35 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
                             </div>
                             <span className="font-medium text-green-600">
                               Rp {r.amount?.toLocaleString('id-ID', { minimumFractionDigits: 2 })}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ) : linkJournalEntry ? (
+                  <div className="space-y-3">
+                    <p className="text-xs text-gray-500">Select a journal entry to link to this bank transaction (matching amount, +/-7 days).</p>
+                    <div className="max-h-48 overflow-y-auto border rounded-lg divide-y">
+                      {availableJournals.length === 0 ? (
+                        <div className="p-3 text-center text-gray-500 text-sm">No matching journal entries found</div>
+                      ) : (
+                        availableJournals.map(j => (
+                          <button
+                            key={j.id}
+                            onClick={() => handleLinkJournalEntry(recordingLine, j.id)}
+                            className="w-full p-2 text-left hover:bg-blue-50 text-sm flex justify-between items-center"
+                          >
+                            <div>
+                              <span className="font-mono font-medium text-blue-600">{j.entry_number}</span>
+                              <span className="text-xs ml-2 px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                {j.source_module === 'manual' ? 'Manual' : j.source_module}
+                              </span>
+                              <div className="text-xs text-gray-500 mt-0.5">{j.description}</div>
+                              <div className="text-xs text-gray-400">{new Date(j.entry_date).toLocaleDateString('id-ID')}</div>
+                            </div>
+                            <span className="font-medium text-green-600">
+                              Rp {(j.total_debit || j.total_credit).toLocaleString('id-ID', { minimumFractionDigits: 2 })}
                             </span>
                           </button>
                         ))
@@ -2667,8 +2678,6 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
                   </form>
                 )}
               </div>
-            )}
-              </>
             )}
           </div>
         )}

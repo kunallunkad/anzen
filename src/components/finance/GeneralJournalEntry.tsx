@@ -161,6 +161,7 @@ export function GeneralJournalEntry({ canManage, onNavigateToLedger }: GeneralJo
 
   const [viewEntry, setViewEntry] = useState<JournalEntryDetail | null>(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
 
   const [templateOpen, setTemplateOpen] = useState(false);
   const templateRef = useRef<HTMLDivElement>(null);
@@ -262,6 +263,7 @@ export function GeneralJournalEntry({ canManage, onNavigateToLedger }: GeneralJo
     setEntryDate(new Date().toISOString().split('T')[0]);
     setNarration('');
     setLines([createEmptyLine(), createEmptyLine()]);
+    setEditingEntryId(null);
   };
 
   const applyTemplate = (template: Template) => {
@@ -287,47 +289,88 @@ export function GeneralJournalEntry({ canManage, onNavigateToLedger }: GeneralJo
     setSaving(true);
 
     try {
-      const { data: entryNum, error: numErr } = await supabase.rpc('generate_journal_entry_number');
-      if (numErr) throw numErr;
+      if (editingEntryId) {
+        const { error: updateErr } = await supabase
+          .from('journal_entries')
+          .update({
+            entry_date: entryDate,
+            description: narration || null,
+            total_debit: totalDebit,
+            total_credit: totalCredit,
+          })
+          .eq('id', editingEntryId)
+          .eq('source_module', 'manual');
 
-      const { data: entry, error: entryErr } = await supabase
-        .from('journal_entries')
-        .insert({
-          entry_number: entryNum,
-          entry_date: entryDate,
-          description: narration || null,
-          source_module: 'manual',
-          total_debit: totalDebit,
-          total_credit: totalCredit,
-          is_posted: true,
-          posted_by: profile?.id,
-          created_by: profile?.id,
-        })
-        .select('id')
-        .single();
+        if (updateErr) throw updateErr;
 
-      if (entryErr) throw entryErr;
+        const { error: delErr } = await supabase
+          .from('journal_entry_lines')
+          .delete()
+          .eq('journal_entry_id', editingEntryId);
+        if (delErr) throw delErr;
 
-      const lineRows = lines
-        .filter(l => l.account_id && (l.debit > 0 || l.credit > 0))
-        .map((l, idx) => ({
-          journal_entry_id: entry.id,
-          line_number: idx + 1,
-          account_id: l.account_id,
-          description: l.description || null,
-          debit: l.debit || 0,
-          credit: l.credit || 0,
-        }));
+        const lineRows = lines
+          .filter(l => l.account_id && (l.debit > 0 || l.credit > 0))
+          .map((l, idx) => ({
+            journal_entry_id: editingEntryId,
+            line_number: idx + 1,
+            account_id: l.account_id,
+            description: l.description || null,
+            debit: l.debit || 0,
+            credit: l.credit || 0,
+          }));
 
-      const { error: linesErr } = await supabase
-        .from('journal_entry_lines')
-        .insert(lineRows);
+        const { error: linesErr } = await supabase
+          .from('journal_entry_lines')
+          .insert(lineRows);
+        if (linesErr) throw linesErr;
 
-      if (linesErr) throw linesErr;
+        showToast('success', 'Journal Updated', 'Entry updated successfully');
+        resetForm();
+        triggerRefresh();
+      } else {
+        const { data: entryNum, error: numErr } = await supabase.rpc('generate_journal_entry_number');
+        if (numErr) throw numErr;
 
-      showToast('success', 'Journal Posted', `Entry ${entryNum} posted successfully`);
-      resetForm();
-      triggerRefresh();
+        const { data: entry, error: entryErr } = await supabase
+          .from('journal_entries')
+          .insert({
+            entry_number: entryNum,
+            entry_date: entryDate,
+            description: narration || null,
+            source_module: 'manual',
+            total_debit: totalDebit,
+            total_credit: totalCredit,
+            is_posted: true,
+            posted_by: profile?.id,
+            created_by: profile?.id,
+          })
+          .select('id')
+          .single();
+
+        if (entryErr) throw entryErr;
+
+        const lineRows = lines
+          .filter(l => l.account_id && (l.debit > 0 || l.credit > 0))
+          .map((l, idx) => ({
+            journal_entry_id: entry.id,
+            line_number: idx + 1,
+            account_id: l.account_id,
+            description: l.description || null,
+            debit: l.debit || 0,
+            credit: l.credit || 0,
+          }));
+
+        const { error: linesErr } = await supabase
+          .from('journal_entry_lines')
+          .insert(lineRows);
+
+        if (linesErr) throw linesErr;
+
+        showToast('success', 'Journal Posted', `Entry ${entryNum} posted successfully`);
+        resetForm();
+        triggerRefresh();
+      }
     } catch (err: any) {
       showToast('error', 'Posting Failed', err.message || 'Could not post journal entry');
     } finally {
@@ -344,6 +387,65 @@ export function GeneralJournalEntry({ canManage, onNavigateToLedger }: GeneralJo
 
     setViewEntry({ ...entry, lines: (data || []) as any });
     setViewModalOpen(true);
+  };
+
+  const handleEditEntry = async (entry: JournalEntry) => {
+    const { data: lineData } = await supabase
+      .from('journal_entry_lines')
+      .select('line_number, account_id, description, debit, credit, chart_of_accounts(code, name)')
+      .eq('journal_entry_id', entry.id)
+      .order('line_number');
+
+    if (lineData && lineData.length > 0) {
+      setEntryDate(entry.entry_date);
+      setNarration(entry.description || '');
+      setLines(lineData.map((l: any) => ({
+        key: crypto.randomUUID(),
+        account_id: l.account_id,
+        account_code: l.chart_of_accounts?.code || '',
+        account_name: l.chart_of_accounts?.name || '',
+        description: l.description || '',
+        debit: l.debit || 0,
+        credit: l.credit || 0,
+      })));
+      setEditingEntryId(entry.id);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleDeleteEntry = async (entryId: string) => {
+    if (!confirm('Are you sure you want to delete this manual journal entry? This cannot be undone.')) return;
+
+    try {
+      const { data: bankLinks } = await supabase
+        .from('bank_statement_lines')
+        .select('id')
+        .eq('matched_entry_id', entryId)
+        .limit(1);
+
+      if (bankLinks && bankLinks.length > 0) {
+        alert('Cannot delete: this entry is linked to a bank statement. Unlink it first from Bank Reconciliation.');
+        return;
+      }
+
+      const { error: linesError } = await supabase
+        .from('journal_entry_lines')
+        .delete()
+        .eq('journal_entry_id', entryId);
+      if (linesError) throw linesError;
+
+      const { error: entryError } = await supabase
+        .from('journal_entries')
+        .delete()
+        .eq('id', entryId)
+        .eq('source_module', 'manual');
+      if (entryError) throw entryError;
+
+      showToast('Journal entry deleted successfully', 'success');
+      loadManualEntries();
+    } catch (error: any) {
+      alert('Error deleting: ' + error.message);
+    }
   };
 
   const formatCurrency = (val: number) => {
@@ -567,8 +669,11 @@ export function GeneralJournalEntry({ canManage, onNavigateToLedger }: GeneralJo
                   Difference: {formatCurrency(Math.abs(totalDebit - totalCredit))} {totalDebit > totalCredit ? '(Debit excess)' : '(Credit excess)'}
                 </span>
               )}
-              {isBalanced && hasAccounts && (
+              {isBalanced && hasAccounts && !editingEntryId && (
                 <span className="text-sm text-green-600 font-medium">Balanced - ready to post</span>
+              )}
+              {editingEntryId && (
+                <span className="text-sm text-orange-600 font-medium">Editing mode - make changes and click Update Journal</span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -584,7 +689,7 @@ export function GeneralJournalEntry({ canManage, onNavigateToLedger }: GeneralJo
                 className="flex items-center gap-1.5 px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                {saving ? 'Posting...' : 'Post Journal'}
+                {saving ? (editingEntryId ? 'Updating...' : 'Posting...') : (editingEntryId ? 'Update Journal' : 'Post Journal')}
               </button>
             </div>
           </div>
@@ -614,7 +719,7 @@ export function GeneralJournalEntry({ canManage, onNavigateToLedger }: GeneralJo
                   <th className="text-left px-4 py-2.5 font-medium">Description</th>
                   <th className="text-right px-4 py-2.5 font-medium">Debit</th>
                   <th className="text-right px-4 py-2.5 font-medium">Credit</th>
-                  <th className="text-center px-4 py-2.5 font-medium">View</th>
+                  <th className="text-center px-4 py-2.5 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -626,12 +731,29 @@ export function GeneralJournalEntry({ canManage, onNavigateToLedger }: GeneralJo
                     <td className="px-4 py-2.5 text-right tabular-nums">{formatCurrency(e.total_debit)}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{formatCurrency(e.total_credit)}</td>
                     <td className="px-4 py-2.5 text-center">
-                      <button
-                        onClick={() => viewEntryDetail(e)}
-                        className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => viewEntryDetail(e)}
+                          className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                          title="View"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleEditEntry(e)}
+                          className="p-1 text-gray-400 hover:text-gray-700 transition-colors"
+                          title="Edit"
+                        >
+                          <BookOpen className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteEntry(e.id)}
+                          className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -642,8 +764,8 @@ export function GeneralJournalEntry({ canManage, onNavigateToLedger }: GeneralJo
       </div>
 
       {/* View detail modal */}
-      {viewModalOpen && viewEntry && (
-        <Modal title={`Journal Entry: ${viewEntry.entry_number}`} onClose={() => setViewModalOpen(false)} size="lg">
+      {viewEntry && (
+        <Modal isOpen={viewModalOpen} title={`Journal Entry: ${viewEntry.entry_number}`} onClose={() => setViewModalOpen(false)} size="lg">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
