@@ -1,33 +1,32 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useFinance } from '../contexts/FinanceContext';
-import { ChevronDown, ChevronRight, Menu, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Menu, X, Loader } from 'lucide-react';
 
-// Import all finance components
-import { PurchaseInvoiceManager } from '../components/finance/PurchaseInvoiceManager';
-import { ReceiptVoucherManager } from '../components/finance/ReceiptVoucherManager';
-import { PaymentVoucherManager } from '../components/finance/PaymentVoucherManager';
-import { ExpenseManager } from '../components/finance/ExpenseManager';
-import { PettyCashManager } from '../components/finance/PettyCashManager';
-import { FundTransferManager } from '../components/finance/FundTransferManager';
-import { JournalEntryViewerEnhanced as JournalEntryViewer } from '../components/finance/JournalEntryViewerEnhanced';
-import { AccountLedger } from '../components/finance/AccountLedger';
-import PartyLedger from '../components/finance/PartyLedger';
-import BankLedger from '../components/finance/BankLedger';
-import { FinancialReports } from '../components/finance/FinancialReports';
-import { ReceivablesManager } from '../components/finance/ReceivablesManager';
-import { PayablesManager } from '../components/finance/PayablesManager';
-import OutstandingSummary from '../components/finance/OutstandingSummary';
-import { AgeingReport } from './reports/AgeingReport';
-import { BankReconciliationEnhanced as BankReconciliation } from '../components/finance/BankReconciliationEnhanced';
-import { ChartOfAccountsManager } from '../components/finance/ChartOfAccountsManager';
-import { SuppliersManager } from '../components/finance/SuppliersManager';
-import { BankAccountsManager } from '../components/finance/BankAccountsManager';
-import { TaxReports } from '../components/finance/TaxReports';
-import { CAReports } from '../components/finance/CAReports';
-import { GeneralJournalEntry } from '../components/finance/GeneralJournalEntry';
+const PurchaseInvoiceManager = lazy(() => import('../components/finance/PurchaseInvoiceManager').then(m => ({ default: m.PurchaseInvoiceManager })));
+const ReceiptVoucherManager = lazy(() => import('../components/finance/ReceiptVoucherManager').then(m => ({ default: m.ReceiptVoucherManager })));
+const PaymentVoucherManager = lazy(() => import('../components/finance/PaymentVoucherManager').then(m => ({ default: m.PaymentVoucherManager })));
+const ExpenseManager = lazy(() => import('../components/finance/ExpenseManager').then(m => ({ default: m.ExpenseManager })));
+const PettyCashManager = lazy(() => import('../components/finance/PettyCashManager').then(m => ({ default: m.PettyCashManager })));
+const FundTransferManager = lazy(() => import('../components/finance/FundTransferManager').then(m => ({ default: m.FundTransferManager })));
+const JournalEntryViewer = lazy(() => import('../components/finance/JournalEntryViewerEnhanced').then(m => ({ default: m.JournalEntryViewerEnhanced })));
+const AccountLedger = lazy(() => import('../components/finance/AccountLedger').then(m => ({ default: m.AccountLedger })));
+const PartyLedger = lazy(() => import('../components/finance/PartyLedger'));
+const BankLedger = lazy(() => import('../components/finance/BankLedger'));
+const FinancialReports = lazy(() => import('../components/finance/FinancialReports').then(m => ({ default: m.FinancialReports })));
+const ReceivablesManager = lazy(() => import('../components/finance/ReceivablesManager').then(m => ({ default: m.ReceivablesManager })));
+const PayablesManager = lazy(() => import('../components/finance/PayablesManager').then(m => ({ default: m.PayablesManager })));
+const OutstandingSummary = lazy(() => import('../components/finance/OutstandingSummary'));
+const AgeingReport = lazy(() => import('./reports/AgeingReport').then(m => ({ default: m.AgeingReport })));
+const BankReconciliation = lazy(() => import('../components/finance/BankReconciliationEnhanced').then(m => ({ default: m.BankReconciliationEnhanced })));
+const ChartOfAccountsManager = lazy(() => import('../components/finance/ChartOfAccountsManager').then(m => ({ default: m.ChartOfAccountsManager })));
+const SuppliersManager = lazy(() => import('../components/finance/SuppliersManager').then(m => ({ default: m.SuppliersManager })));
+const BankAccountsManager = lazy(() => import('../components/finance/BankAccountsManager').then(m => ({ default: m.BankAccountsManager })));
+const TaxReports = lazy(() => import('../components/finance/TaxReports').then(m => ({ default: m.TaxReports })));
+const CAReports = lazy(() => import('../components/finance/CAReports').then(m => ({ default: m.CAReports })));
+const GeneralJournalEntry = lazy(() => import('../components/finance/GeneralJournalEntry').then(m => ({ default: m.GeneralJournalEntry })));
 
 type FinanceTab =
   | 'purchase' | 'receipt' | 'payment' | 'journal' | 'contra' | 'expenses' | 'petty_cash'
@@ -304,7 +303,13 @@ function FinanceContent() {
           {/* Content Area - Pure White Background */}
           <div className="flex-1 overflow-auto bg-white">
             <div className="p-3 md:p-6">
-              {renderContent()}
+              <Suspense fallback={
+                <div className="flex items-center justify-center py-12">
+                  <Loader className="w-6 h-6 animate-spin text-blue-600" />
+                </div>
+              }>
+                {renderContent()}
+              </Suspense>
             </div>
           </div>
         </div>
