@@ -842,6 +842,31 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
     if (!await showConfirm({ title: 'Confirm', message: 'Are you sure you want to delete this expense?', variant: 'danger', confirmLabel: 'Delete' })) return;
 
     try {
+      // Check if expense is linked to any bank statement lines
+      const { data: linkedStatements, error: checkError } = await supabase
+        .from('bank_statement_lines')
+        .select('id')
+        .eq('matched_expense_id', id);
+
+      if (checkError) throw checkError;
+
+      // If linked to bank statements, unlink them first
+      if (linkedStatements && linkedStatements.length > 0) {
+        const { error: unlinkError } = await supabase
+          .from('bank_statement_lines')
+          .update({
+            matched_expense_id: null,
+            reconciliation_status: 'unmatched',
+            matched_at: null,
+            matched_by: null,
+            notes: null
+          })
+          .eq('matched_expense_id', id);
+
+        if (unlinkError) throw unlinkError;
+      }
+
+      // Now delete the expense
       const { error } = await supabase
         .from('finance_expenses')
         .delete()
