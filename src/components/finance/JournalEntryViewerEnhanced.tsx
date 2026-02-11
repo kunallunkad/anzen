@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useFinance } from '../../contexts/FinanceContext';
-import { Search, FileText, LayoutList, Table2 } from 'lucide-react';
+import { Search, FileText, LayoutList, Table2, Edit, Trash2 } from 'lucide-react';
 import { Modal } from '../Modal';
+import { showToast } from '../ToastNotification';
 
 interface JournalEntry {
   id: string;
@@ -134,6 +135,51 @@ export function JournalEntryViewerEnhanced({ canManage }: JournalEntryViewerEnha
     }
   };
 
+  const handleDeleteJournal = async (journalId: string) => {
+    if (!confirm('Are you sure you want to delete this manual journal entry? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      // Check if this journal is linked to any bank statement
+      const { data: bankLinks, error: checkError } = await supabase
+        .from('bank_statement_lines')
+        .select('id')
+        .eq('matched_entry_id', journalId)
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      if (bankLinks && bankLinks.length > 0) {
+        alert('Cannot delete this journal entry because it is linked to a bank statement. Please unlink it first from Bank Reconciliation.');
+        return;
+      }
+
+      // Delete journal entry lines first (cascade might handle this, but be explicit)
+      const { error: linesError } = await supabase
+        .from('journal_entry_lines')
+        .delete()
+        .eq('journal_entry_id', journalId);
+
+      if (linesError) throw linesError;
+
+      // Delete journal entry
+      const { error: entryError } = await supabase
+        .from('journal_entries')
+        .delete()
+        .eq('id', journalId)
+        .eq('source_module', 'manual'); // Safety check - only delete manual entries
+
+      if (entryError) throw entryError;
+
+      showToast('Journal entry deleted successfully', 'success');
+      loadVoucherJournal(); // Reload list
+    } catch (error: any) {
+      console.error('Error deleting journal:', error);
+      alert('Error deleting journal entry: ' + error.message);
+    }
+  };
+
   const filteredVouchers = voucherEntries.filter(v =>
     v.voucher_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (v.debit_account && v.debit_account.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -196,7 +242,7 @@ export function JournalEntryViewerEnhanced({ canManage }: JournalEntryViewerEnha
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">Credit Account</th>
                 <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r">Amount</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">Narration</th>
-                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
@@ -233,13 +279,33 @@ export function JournalEntryViewerEnhanced({ canManage }: JournalEntryViewerEnha
                     </div>
                   </td>
                   <td className="px-3 py-2 text-center">
-                    <button
-                      onClick={() => handleViewVoucher(voucher)}
-                      className="text-blue-600 hover:text-blue-800"
-                      title="View detailed breakdown"
-                    >
-                      <FileText className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => handleViewVoucher(voucher)}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="View detailed breakdown"
+                      >
+                        <FileText className="w-4 h-4" />
+                      </button>
+                      {canManage && voucher.source_module === 'manual' && (
+                        <>
+                          <button
+                            onClick={() => alert('Edit functionality will redirect to Journal Entry form')}
+                            className="text-gray-600 hover:text-gray-800"
+                            title="Edit manual entry"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteJournal(voucher.journal_entry_id)}
+                            className="text-red-600 hover:text-red-800"
+                            title="Delete manual entry"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

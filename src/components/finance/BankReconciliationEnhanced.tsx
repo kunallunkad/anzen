@@ -100,6 +100,8 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [existingReceipts, setExistingReceipts] = useState<any[]>([]);
   const [linkExistingReceipt, setLinkExistingReceipt] = useState(false);
+  const [linkJournalEntry, setLinkJournalEntry] = useState(false);
+  const [availableJournals, setAvailableJournals] = useState<any[]>([]);
 
   const expenseCategories = [
     {
@@ -1668,6 +1670,74 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
     }
   };
 
+  const loadAvailableJournals = async (line: StatementLine) => {
+    try {
+      const { startDate, endDate } = financeDateRange;
+      const amount = line.debit > 0 ? line.debit : line.credit;
+
+      // Get journals from 7 days before to 7 days after the transaction
+      const transactionDate = new Date(line.date);
+      const startSearch = new Date(transactionDate);
+      startSearch.setDate(startSearch.getDate() - 7);
+      const endSearch = new Date(transactionDate);
+      endSearch.setDate(endSearch.getDate() + 7);
+
+      const { data: journals, error } = await supabase
+        .from('journal_entries')
+        .select(`
+          id,
+          entry_number,
+          entry_date,
+          description,
+          total_debit,
+          total_credit,
+          source_module
+        `)
+        .eq('is_posted', true)
+        .eq('is_reversed', false)
+        .gte('entry_date', startSearch.toISOString().split('T')[0])
+        .lte('entry_date', endSearch.toISOString().split('T')[0])
+        .or(`total_debit.eq.${amount},total_credit.eq.${amount}`)
+        .order('entry_date', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setAvailableJournals(journals || []);
+    } catch (error) {
+      console.error('Error loading journals:', error);
+      setAvailableJournals([]);
+    }
+  };
+
+  const handleLinkJournalEntry = async (line: StatementLine, journalId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { error } = await supabase
+        .from('bank_statement_lines')
+        .update({
+          reconciliation_status: 'matched',
+          matched_entry_id: journalId,
+          matched_at: new Date().toISOString(),
+          matched_by: user.id,
+        })
+        .eq('id', line.id);
+
+      if (error) throw error;
+
+      setRecordModal(false);
+      setRecordingLine(null);
+      setLinkJournalEntry(false);
+      setAvailableJournals([]);
+      loadStatementLines();
+      alert('Successfully linked to journal entry');
+    } catch (error: any) {
+      console.error('Error linking journal:', error);
+      alert('Error: ' + error.message);
+    }
+  };
+
   const filteredLines = statementLines.filter(line => {
     if (activeFilter === 'all') return true;
     return line.status === activeFilter;
@@ -2165,7 +2235,18 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
       )}
 
       {/* Recording Modal */}
-      <Modal isOpen={recordModal} onClose={() => { setRecordModal(false); setRecordingLine(null); setLinkToExpense(false); }} title="Record Transaction">
+      <Modal
+        isOpen={recordModal}
+        onClose={() => {
+          setRecordModal(false);
+          setRecordingLine(null);
+          setLinkToExpense(false);
+          setLinkJournalEntry(false);
+          setAvailableJournals([]);
+        }}
+        title="Record Transaction"
+        size="xl"
+      >
         {recordingLine && (
           <div className="space-y-4">
             <div className="p-3 bg-gray-50 rounded-lg">
@@ -2195,7 +2276,77 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
               )}
             </div>
 
-            {recordingLine.debit > 0 && (
+            {/* Link Journal Entry Option */}
+            <div className="border-t border-b border-gray-200 py-3">
+              <button
+                onClick={() => {
+                  setLinkJournalEntry(!linkJournalEntry);
+                  if (!linkJournalEntry) {
+                    loadAvailableJournals(recordingLine);
+                    setLinkToExpense(false);
+                    setLinkExistingReceipt(false);
+                  }
+                }}
+                className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  linkJournalEntry
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {linkJournalEntry ? '✓ Linking to Journal Entry' : '🔗 Link to Existing Journal Entry'}
+              </button>
+            </div>
+
+            {linkJournalEntry ? (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">
+                  Select a journal entry that matches this bank transaction (±7 days, matching amount)
+                </p>
+                <div className="max-h-64 overflow-y-auto border rounded-lg divide-y">
+                  {availableJournals.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500 text-sm">
+                      No matching journal entries found
+                    </div>
+                  ) : (
+                    availableJournals.map(journal => (
+                      <button
+                        key={journal.id}
+                        onClick={() => handleLinkJournalEntry(recordingLine, journal.id)}
+                        className="w-full p-3 text-left hover:bg-purple-50 transition-colors"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-sm font-medium text-purple-600">
+                                {journal.entry_number}
+                              </span>
+                              <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                {journal.source_module === 'manual' ? 'Manual' : journal.source_module}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700 mt-1">{journal.description}</p>
+                            <div className="text-xs text-gray-400 mt-1">
+                              {new Date(journal.entry_date).toLocaleDateString('id-ID')}
+                            </div>
+                          </div>
+                          <div className="text-right ml-4">
+                            <div className="text-xs text-gray-500">Amount</div>
+                            <div className="font-medium text-sm">
+                              Rp {(journal.total_debit || journal.total_credit).toLocaleString('id-ID', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
+                {recordingLine.debit > 0 && (
               <div>
                 <div className="flex gap-2 mb-3">
                   <button
@@ -2516,6 +2667,8 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
                   </form>
                 )}
               </div>
+            )}
+              </>
             )}
           </div>
         )}
