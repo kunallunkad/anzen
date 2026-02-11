@@ -1672,10 +1672,8 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
 
   const loadAvailableJournals = async (line: StatementLine) => {
     try {
-      const { startDate, endDate } = financeDateRange;
       const amount = line.debit > 0 ? line.debit : line.credit;
 
-      // Get journals from 7 days before to 7 days after the transaction
       const transactionDate = new Date(line.date);
       const startSearch = new Date(transactionDate);
       startSearch.setDate(startSearch.getDate() - 7);
@@ -1691,7 +1689,8 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
           description,
           total_debit,
           total_credit,
-          source_module
+          source_module,
+          reference_number
         `)
         .eq('is_posted', true)
         .eq('is_reversed', false)
@@ -1699,10 +1698,64 @@ export function BankReconciliationEnhanced({ canManage }: BankReconciliationEnha
         .lte('entry_date', endSearch.toISOString().split('T')[0])
         .or(`total_debit.eq.${amount},total_credit.eq.${amount}`)
         .order('entry_date', { ascending: false })
-        .limit(50);
+        .limit(100);
 
       if (error) throw error;
-      setAvailableJournals(journals || []);
+
+      const { data: alreadyMatched } = await supabase
+        .from('bank_statement_lines')
+        .select('matched_entry_id')
+        .not('matched_entry_id', 'is', null)
+        .neq('id', line.id);
+
+      const matchedEntryIds = new Set((alreadyMatched || []).map(b => b.matched_entry_id));
+
+      const validJournals: typeof journals = [];
+      for (const j of (journals || [])) {
+        if (matchedEntryIds.has(j.id)) continue;
+
+        if (j.source_module === 'expenses' && j.reference_number) {
+          const expId = j.reference_number.replace('EXP-', '');
+          const { data: exp } = await supabase
+            .from('finance_expenses')
+            .select('id')
+            .eq('id', expId)
+            .maybeSingle();
+          if (!exp) continue;
+        }
+
+        if (j.source_module === 'receipt' && j.reference_number) {
+          const { data: rv } = await supabase
+            .from('receipt_vouchers')
+            .select('id')
+            .eq('journal_entry_id', j.id)
+            .maybeSingle();
+          if (!rv) continue;
+        }
+
+        if (j.source_module === 'payment' && j.reference_number) {
+          const { data: pv } = await supabase
+            .from('payment_vouchers')
+            .select('id')
+            .eq('journal_entry_id', j.id)
+            .maybeSingle();
+          if (!pv) continue;
+        }
+
+        if (j.source_module === 'petty_cash' && j.reference_number) {
+          const refId = j.reference_number.replace('PC-', '');
+          const { data: pc } = await supabase
+            .from('petty_cash_transactions')
+            .select('id')
+            .eq('id', refId)
+            .maybeSingle();
+          if (!pc) continue;
+        }
+
+        validJournals.push(j);
+      }
+
+      setAvailableJournals(validJournals);
     } catch (error) {
       console.error('Error loading journals:', error);
       setAvailableJournals([]);

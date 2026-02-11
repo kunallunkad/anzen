@@ -442,7 +442,7 @@ export function GeneralJournalEntry({ canManage, onNavigateToLedger }: GeneralJo
       if (entryError) throw entryError;
 
       showToast('Journal entry deleted successfully', 'success');
-      loadManualEntries();
+      loadEntries();
     } catch (error: any) {
       alert('Error deleting: ' + error.message);
     }

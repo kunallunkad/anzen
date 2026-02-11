@@ -866,7 +866,38 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
         if (unlinkError) throw unlinkError;
       }
 
-      // Now delete the expense
+      const { data: linkedJournals } = await supabase
+        .from('journal_entries')
+        .select('id')
+        .eq('source_module', 'expenses')
+        .eq('reference_number', `EXP-${id}`);
+
+      if (linkedJournals && linkedJournals.length > 0) {
+        const journalIds = linkedJournals.map(j => j.id);
+
+        const { data: bankLinkedJournals } = await supabase
+          .from('bank_statement_lines')
+          .select('id')
+          .in('matched_entry_id', journalIds);
+
+        if (bankLinkedJournals && bankLinkedJournals.length > 0) {
+          await supabase
+            .from('bank_statement_lines')
+            .update({
+              matched_entry_id: null,
+              reconciliation_status: 'unmatched',
+              matched_at: null,
+              matched_by: null,
+            })
+            .in('matched_entry_id', journalIds);
+        }
+
+        for (const jId of journalIds) {
+          await supabase.from('journal_entry_lines').delete().eq('journal_entry_id', jId);
+          await supabase.from('journal_entries').delete().eq('id', jId);
+        }
+      }
+
       const { error } = await supabase
         .from('finance_expenses')
         .delete()
@@ -874,7 +905,6 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
 
       if (error) throw error;
 
-      // Remove from local state
       setExpenses(prev => prev.filter(exp => exp.id !== id));
       showToast({ type: 'success', title: 'Success', message: 'Expense deleted successfully' });
     } catch (error: any) {

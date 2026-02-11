@@ -643,13 +643,53 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
     if (!await showConfirm({ title: 'Confirm', message: 'Are you sure you want to delete this transaction?', variant: 'danger', confirmLabel: 'Delete' })) return;
 
     try {
-      // Get associated documents to delete from storage
       const { data: docs } = await supabase
         .from('petty_cash_documents')
         .select('file_url')
         .eq('petty_cash_transaction_id', id);
 
-      // Delete transaction (CASCADE will delete documents from DB)
+      const { data: linkedBankLines } = await supabase
+        .from('bank_statement_lines')
+        .select('id')
+        .eq('matched_petty_cash_id', id);
+
+      if (linkedBankLines && linkedBankLines.length > 0) {
+        await supabase
+          .from('bank_statement_lines')
+          .update({
+            matched_petty_cash_id: null,
+            reconciliation_status: 'unmatched',
+            matched_at: null,
+            matched_by: null,
+          })
+          .eq('matched_petty_cash_id', id);
+      }
+
+      const { data: linkedJournals } = await supabase
+        .from('journal_entries')
+        .select('id')
+        .eq('source_module', 'petty_cash')
+        .ilike('reference_number', `%${id}%`);
+
+      if (linkedJournals && linkedJournals.length > 0) {
+        const journalIds = linkedJournals.map(j => j.id);
+
+        await supabase
+          .from('bank_statement_lines')
+          .update({
+            matched_entry_id: null,
+            reconciliation_status: 'unmatched',
+            matched_at: null,
+            matched_by: null,
+          })
+          .in('matched_entry_id', journalIds);
+
+        for (const jId of journalIds) {
+          await supabase.from('journal_entry_lines').delete().eq('journal_entry_id', jId);
+          await supabase.from('journal_entries').delete().eq('id', jId);
+        }
+      }
+
       const { error } = await supabase
         .from('petty_cash_transactions')
         .delete()
@@ -657,7 +697,6 @@ export function PettyCashManager({ canManage, onNavigateToFundTransfer }: PettyC
 
       if (error) throw error;
 
-      // Delete files from storage
       if (docs && docs.length > 0) {
         const filePaths = docs.map(doc => {
           const url = doc.file_url;

@@ -471,13 +471,43 @@ export function ReceiptVoucherManager({ canManage }: ReceiptVoucherManagerProps)
     }
 
     try {
-      // Delete allocations first (cascade should handle this, but being explicit)
       await supabase
         .from('voucher_allocations')
         .delete()
         .eq('receipt_voucher_id', voucher.id);
 
-      // Delete voucher
+      if (voucher.journal_entry_id) {
+        await supabase
+          .from('bank_statement_lines')
+          .update({
+            matched_entry_id: null,
+            reconciliation_status: 'unmatched',
+            matched_at: null,
+            matched_by: null,
+          })
+          .eq('matched_entry_id', voucher.journal_entry_id);
+
+        await supabase.from('journal_entry_lines').delete().eq('journal_entry_id', voucher.journal_entry_id);
+        await supabase.from('journal_entries').delete().eq('id', voucher.journal_entry_id);
+      }
+
+      const { data: linkedBankLines } = await supabase
+        .from('bank_statement_lines')
+        .select('id')
+        .eq('matched_receipt_id', voucher.id);
+
+      if (linkedBankLines && linkedBankLines.length > 0) {
+        await supabase
+          .from('bank_statement_lines')
+          .update({
+            matched_receipt_id: null,
+            reconciliation_status: 'unmatched',
+            matched_at: null,
+            matched_by: null,
+          })
+          .eq('matched_receipt_id', voucher.id);
+      }
+
       const { error } = await supabase
         .from('receipt_vouchers')
         .delete()
