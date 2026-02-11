@@ -98,7 +98,7 @@ export function PaymentOverview() {
       {data.length > 0 ? (
         <div className="flex items-center gap-4">
           <div className="w-40 h-40 flex-shrink-0">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={160} minHeight={160}>
               <PieChart>
                 <Pie
                   data={data}

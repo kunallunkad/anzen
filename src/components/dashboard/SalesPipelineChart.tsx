@@ -93,7 +93,7 @@ export function SalesPipelineChart() {
         </div>
       </div>
       {data.length > 0 ? (
-        <ResponsiveContainer width="100%" height={160}>
+        <ResponsiveContainer width="100%" height={160} minHeight={160}>
           <BarChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
             <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#6b7280' }} tickLine={false} axisLine={false} />

@@ -42,13 +42,15 @@ export function UserManagement({ users, onRefresh }: UserManagementProps) {
     setLoading(true);
 
     try {
-      // Create auth user
+      // Create auth user with metadata (trigger will create profile automatically)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
+            username: formData.username.toLowerCase(),
             full_name: formData.full_name,
+            role: formData.role,
             email_verified: true,
           },
         },
@@ -57,19 +59,16 @@ export function UserManagement({ users, onRefresh }: UserManagementProps) {
       if (authError) throw authError;
       if (!authData.user) throw new Error('Failed to create user');
 
-      // Create user profile
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .insert([{
-          id: authData.user.id,
-          username: formData.username.toLowerCase(),
-          email: formData.email,
-          full_name: formData.full_name,
-          role: formData.role,
-          is_active: true,
-        }]);
+      // Wait a moment for trigger to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      if (profileError) throw profileError;
+      // Update profile with is_active flag if needed
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update({ is_active: true })
+        .eq('id', authData.user.id);
+
+      if (updateError) console.warn('Profile update warning:', updateError);
 
       showToast({ type: 'success', title: 'Success', message: `User ${formData.full_name} created successfully! Username: ${formData.username}` });
       setShowAddModal(false);
