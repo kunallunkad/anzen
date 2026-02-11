@@ -325,7 +325,7 @@ export function GeneralJournalEntry({ canManage, onNavigateToLedger }: GeneralJo
           .insert(lineRows);
         if (linesErr) throw linesErr;
 
-        showToast('success', 'Journal Updated', 'Entry updated successfully');
+        showToast({ type: 'success', title: 'Journal Updated', message: 'Entry updated successfully' });
         resetForm();
         triggerRefresh();
       } else {
@@ -367,12 +367,12 @@ export function GeneralJournalEntry({ canManage, onNavigateToLedger }: GeneralJo
 
         if (linesErr) throw linesErr;
 
-        showToast('success', 'Journal Posted', `Entry ${entryNum} posted successfully`);
+        showToast({ type: 'success', title: 'Journal Posted', message: `Entry ${entryNum} posted successfully` });
         resetForm();
         triggerRefresh();
       }
     } catch (err: any) {
-      showToast('error', 'Posting Failed', err.message || 'Could not post journal entry');
+      showToast({ type: 'error', title: 'Posting Failed', message: err.message || 'Could not post journal entry' });
     } finally {
       setSaving(false);
     }
@@ -441,7 +441,7 @@ export function GeneralJournalEntry({ canManage, onNavigateToLedger }: GeneralJo
         .eq('source_module', 'manual');
       if (entryError) throw entryError;
 
-      showToast('Journal entry deleted successfully', 'success');
+      showToast({ type: 'success', title: 'Journal Deleted', message: 'Journal entry deleted successfully' });
       loadEntries();
     } catch (error: any) {
       alert('Error deleting: ' + error.message);

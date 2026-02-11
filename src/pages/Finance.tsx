@@ -226,8 +226,7 @@ function FinanceContent() {
         {!sidebarCollapsed && (
           <div className="fixed inset-0 z-40 bg-black/30 md:hidden" onClick={() => setSidebarCollapsed(true)} />
         )}
-        {!sidebarCollapsed && (
-          <div className="fixed inset-y-0 left-0 z-50 w-48 bg-white border-r border-gray-200 flex flex-col md:relative md:z-auto">
+        <div className={`fixed inset-y-0 left-0 z-50 w-48 bg-white border-r border-gray-200 flex flex-col md:relative md:z-auto transition-transform duration-300 ${sidebarCollapsed ? '-translate-x-full md:translate-x-0' : 'translate-x-0'}`}>
             {/* Menu Groups */}
             <div className="flex-1 overflow-y-auto">
               {financeMenu.map((group, groupIdx) => {
@@ -280,8 +279,7 @@ function FinanceContent() {
                 );
               })}
             </div>
-          </div>
-        )}
+        </div>
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -289,7 +287,7 @@ function FinanceContent() {
           <div className="bg-white border-b border-gray-200 px-3 md:px-6 py-3 flex items-center gap-3">
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+              className="p-1.5 hover:bg-gray-100 rounded transition-colors md:hidden"
               title={sidebarCollapsed ? 'Show Menu' : 'Hide Menu'}
             >
               {sidebarCollapsed ? <Menu className="w-5 h-5 text-gray-600" /> : <X className="w-5 h-5 text-gray-600" />}
