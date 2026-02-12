@@ -1185,7 +1185,7 @@ export function Sales() {
     },
   ];
 
-  const canManage = profile?.role === 'admin' || profile?.role === 'accounts' || profile?.role === 'sales';
+  const canManage = profile?.role === 'admin' || profile?.role === 'accounts' || profile?.role === 'sales' || profile?.role === 'warehouse';
 
   const stats = {
     total: invoices.length,
