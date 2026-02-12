@@ -161,10 +161,11 @@ export function Dashboard() {
   const isAccounts = role === 'accounts';
   const isSales = role === 'sales';
   const isWarehouse = role === 'warehouse';
+  const isAuditor = role === 'auditor_ca';
 
   const statCards: any[] = [];
 
-  if (isAdmin || isAccounts) {
+  if (isAdmin || isAccounts || isAuditor) {
     statCards.push({
       title: 'Overdue Invoices',
       value: stats.overdueInvoicesCount,
@@ -185,7 +186,7 @@ export function Dashboard() {
       link: 'sales-orders'
     });
   }
-  if (isAdmin || isAccounts) {
+  if (isAdmin || isAccounts || isAuditor) {
     statCards.push({
       title: t('dashboard.salesThisMonth'),
       value: stats.salesThisMonth,
@@ -252,6 +253,11 @@ export function Dashboard() {
     quickLinks.push({ label: 'Stock Management', page: 'stock', icon: ClipboardCheck, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700' });
     quickLinks.push({ label: 'Delivery Challans', page: 'delivery-challan', icon: FileText, color: 'bg-gray-50 hover:bg-gray-100 text-gray-700' });
     quickLinks.push({ label: 'Inventory', page: 'inventory', icon: AlertTriangle, color: 'bg-gray-50 hover:bg-gray-100 text-gray-700' });
+  }
+  if (isAuditor) {
+    quickLinks.push({ label: 'Sales Invoices', page: 'sales', icon: FileText, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700' });
+    quickLinks.push({ label: 'Finance Module', page: 'finance', icon: FileText, color: 'bg-gray-50 hover:bg-gray-100 text-gray-700' });
+    quickLinks.push({ label: 'Purchase Orders', page: 'purchase-orders', icon: ClipboardList, color: 'bg-gray-50 hover:bg-gray-100 text-gray-700' });
   }
 
   return (

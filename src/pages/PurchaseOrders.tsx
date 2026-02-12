@@ -542,13 +542,15 @@ export default function PurchaseOrders() {
             <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
             <p className="text-gray-600">Manage procurement from suppliers</p>
           </div>
-          <button
-            onClick={handleCreateNew}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-          >
-            <Plus className="h-5 w-5" />
-            New Purchase Order
-          </button>
+          {profile?.role !== 'auditor_ca' && (
+            <button
+              onClick={handleCreateNew}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              <Plus className="h-5 w-5" />
+              New Purchase Order
+            </button>
+          )}
         </div>
 
         {/* Filters */}
@@ -646,7 +648,7 @@ export default function PurchaseOrders() {
                       >
                         <Eye className="h-5 w-5" />
                       </button>
-                      {po.status === 'draft' && (
+                      {po.status === 'draft' && profile?.role !== 'auditor_ca' && (
                         <>
                           <button
                             onClick={() => handleEdit(po)}

@@ -99,23 +99,23 @@ export function Layout({ children }: LayoutProps) {
   }, [currentPage, shouldAutoCollapse, sidebarCollapsed, setSidebarCollapsed]);
 
   const menuItems = [
-    { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, roles: ['admin', 'accounts', 'sales', 'warehouse'] },
+    { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, roles: ['admin', 'accounts', 'sales', 'warehouse', 'auditor_ca'] },
     { id: 'products', label: t('nav.products'), icon: Package, roles: ['admin', 'sales', 'warehouse'] },
     { id: 'batches', label: t('nav.batches'), icon: Boxes, roles: ['admin', 'warehouse', 'accounts'] },
     { id: 'stock', label: t('nav.stock'), icon: Warehouse, roles: ['admin', 'sales', 'warehouse', 'accounts'] },
     { id: 'customers', label: t('nav.customers'), icon: Users, roles: ['admin', 'accounts', 'sales', 'warehouse'] },
     { id: 'sales-orders', label: t('nav.salesOrders'), icon: FileText, roles: ['admin', 'accounts', 'sales', 'warehouse'] },
     { id: 'delivery-challan', label: t('nav.deliveryChallan'), icon: Truck, roles: ['admin', 'accounts', 'sales', 'warehouse'] },
-    { id: 'sales', label: t('nav.sales'), icon: ShoppingCart, roles: ['admin', 'accounts', 'sales', 'warehouse'] },
-    { id: 'purchase-orders', label: t('nav.purchaseOrders'), icon: ClipboardList, roles: ['admin', 'warehouse', 'accounts'] },
-    { id: 'import-requirements', label: t('nav.importRequirements'), icon: TrendingUp, roles: ['admin', 'warehouse', 'sales'] },
-    { id: 'import-containers', label: t('nav.importContainers'), icon: Package, roles: ['admin', 'warehouse', 'accounts'] },
-    { id: 'finance', label: t('nav.finance'), icon: DollarSign, roles: ['admin', 'accounts'] },
+    { id: 'sales', label: t('nav.sales'), icon: ShoppingCart, roles: ['admin', 'accounts', 'sales', 'auditor_ca'] },
+    { id: 'purchase-orders', label: t('nav.purchaseOrders'), icon: ClipboardList, roles: ['admin', 'accounts', 'auditor_ca'] },
+    { id: 'import-requirements', label: t('nav.importRequirements'), icon: TrendingUp, roles: ['admin', 'sales'] },
+    { id: 'import-containers', label: t('nav.importContainers'), icon: Package, roles: ['admin', 'accounts'] },
+    { id: 'finance', label: t('nav.finance'), icon: DollarSign, roles: ['admin', 'accounts', 'auditor_ca'] },
     { id: 'crm', label: t('nav.crm'), icon: UserCircle, roles: ['admin', 'sales'] },
     { id: 'command-center', label: t('nav.commandCenter'), icon: Zap, roles: ['admin', 'sales'] },
     { id: 'tasks', label: t('nav.tasks'), icon: CheckSquare, roles: ['admin', 'accounts', 'sales', 'warehouse'] },
     { id: 'inventory', label: t('nav.inventory'), icon: Warehouse, roles: ['admin', 'warehouse'] },
-    { id: 'settings', label: t('nav.settings'), icon: Settings, roles: ['admin', 'accounts', 'sales'] },
+    { id: 'settings', label: t('nav.settings'), icon: Settings, roles: ['admin', 'accounts', 'sales', 'warehouse'] },
   ];
 
   const visibleMenuItems = menuItems.filter(item =>

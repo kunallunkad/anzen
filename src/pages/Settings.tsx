@@ -36,7 +36,7 @@ interface UserProfile {
   username?: string;
   email: string;
   full_name: string;
-  role: 'admin' | 'accounts' | 'sales' | 'warehouse';
+  role: 'admin' | 'accounts' | 'sales' | 'warehouse' | 'auditor_ca';
   language?: string;
   is_active: boolean;
   created_at?: string;
@@ -48,6 +48,7 @@ export function Settings() {
 
   const getDefaultTab = () => {
     if (profile?.role === 'sales') return 'gmail';
+    if (profile?.role === 'warehouse') return 'suppliers';
     if (profile?.role === 'accounts') return 'company';
     return 'company';
   };
@@ -82,6 +83,8 @@ export function Settings() {
       loadUsers();
     } else if (profile?.role === 'accounts') {
       loadSettings();
+    } else if (profile?.role === 'warehouse') {
+      setLoading(false);
     } else {
       setLoading(false);
     }
@@ -182,8 +185,9 @@ export function Settings() {
   const isAdmin = profile?.role === 'admin';
   const isSales = profile?.role === 'sales';
   const isAccountant = profile?.role === 'accounts';
+  const isWarehouse = profile?.role === 'warehouse';
 
-  if (!isAdmin && !isSales && !isAccountant) {
+  if (!isAdmin && !isSales && !isAccountant && !isWarehouse) {
     return (
       <Layout>
         <div className="text-center py-12">
@@ -245,7 +249,7 @@ export function Settings() {
                   </div>
                 </button>
               )}
-              {(isAdmin || isAccountant || isSales) && (
+              {(isAdmin || isAccountant || isSales || isWarehouse) && (
                 <button
                   onClick={() => setActiveTab('suppliers')}
                   className={`px-6 py-3 text-sm font-medium border-b-2 transition ${

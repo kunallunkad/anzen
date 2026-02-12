@@ -1252,7 +1252,7 @@ export function Sales() {
           columns={columns}
           data={invoices}
           loading={loading}
-          actions={canManage ? (invoice) => (
+          actions={(invoice) => (
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleView(invoice)}
@@ -1261,22 +1261,26 @@ export function Sales() {
               >
                 <Eye className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => handleEdit(invoice)}
-                className="p-1 text-green-600 hover:bg-green-50 rounded"
-                title={t('common.edit')}
-              >
-                <Edit className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleDelete(invoice.id)}
-                className="p-1 text-red-600 hover:bg-red-50 rounded"
-                title={t('common.delete')}
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {canManage && (
+                <>
+                  <button
+                    onClick={() => handleEdit(invoice)}
+                    className="p-1 text-green-600 hover:bg-green-50 rounded"
+                    title={t('common.edit')}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(invoice.id)}
+                    className="p-1 text-red-600 hover:bg-red-50 rounded"
+                    title={t('common.delete')}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </div>
-          ) : undefined}
+          )}
         />
 
         <Modal
