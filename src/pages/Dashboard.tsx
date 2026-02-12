@@ -14,6 +14,7 @@ import {
   TrendingUp,
   FileText,
   ClipboardCheck,
+  ClipboardList,
   Zap,
   UserCircle,
   ArrowRight,
