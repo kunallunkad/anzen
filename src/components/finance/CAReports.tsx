@@ -207,13 +207,15 @@ export function CAReports() {
     const { data, error } = await supabase
       .from('sales_invoices')
       .select(`
+        id,
         invoice_number,
         invoice_date,
+        due_date,
         customer_id,
         subtotal,
         tax_amount,
         total_amount,
-        faktur_pajak_number,
+        payment_status,
         customers(company_name)
       `)
       .gte('invoice_date', dateRange.from)
@@ -222,15 +224,25 @@ export function CAReports() {
 
     if (error) throw error;
 
-    return data?.map(inv => ({
-      invoice_date: inv.invoice_date,
-      invoice_number: inv.invoice_number,
-      customer_name: (inv.customers as any)?.company_name,
-      tax_invoice_no: inv.faktur_pajak_number,
-      net_amount: inv.subtotal,
-      ppn: inv.tax_amount,
-      total_amount: inv.total_amount
-    })) || [];
+    // Fetch payment dates for each invoice
+    const invoicesWithPaymentData = await Promise.all((data || []).map(async (inv) => {
+      const { data: latestPaymentDate } = await supabase
+        .rpc('get_invoice_latest_payment_date', { p_invoice_id: inv.id });
+
+      return {
+        invoice_date: inv.invoice_date,
+        invoice_number: inv.invoice_number,
+        customer_name: (inv.customers as any)?.company_name,
+        due_date: inv.due_date,
+        payment_receipt: latestPaymentDate,
+        payment_status: inv.payment_status,
+        net_amount: inv.subtotal,
+        ppn: inv.tax_amount,
+        total_amount: inv.total_amount
+      };
+    }));
+
+    return invoicesWithPaymentData;
   };
 
   const loadPurchaseRegister = async () => {
@@ -538,7 +550,8 @@ export function CAReports() {
           'Date': row.invoice_date,
           'Invoice No': row.invoice_number,
           'Customer': row.customer_name,
-          'Tax Invoice No': row.tax_invoice_no,
+          'Due Date': row.payment_status === 'paid' ? '-' : row.due_date,
+          'Payment Receipt': row.payment_receipt || '-',
           'Net Amount': row.net_amount,
           'PPN': row.ppn,
           'Total': row.total_amount
@@ -773,7 +786,8 @@ export function CAReports() {
                       <th className="px-4 py-3 text-left font-medium text-slate-700">Date</th>
                       <th className="px-4 py-3 text-left font-medium text-slate-700">Invoice No</th>
                       <th className="px-4 py-3 text-left font-medium text-slate-700">Customer</th>
-                      <th className="px-4 py-3 text-left font-medium text-slate-700">Tax Invoice</th>
+                      <th className="px-4 py-3 text-left font-medium text-slate-700">Due Date</th>
+                      <th className="px-4 py-3 text-left font-medium text-slate-700">Payment Receipt</th>
                       <th className="px-4 py-3 text-right font-medium text-slate-700">Net</th>
                       <th className="px-4 py-3 text-right font-medium text-slate-700">PPN</th>
                       <th className="px-4 py-3 text-right font-medium text-slate-700">Total</th>
@@ -877,7 +891,22 @@ export function CAReports() {
                     <td className="px-4 py-3 text-slate-900">{row.invoice_date}</td>
                     <td className="px-4 py-3 text-slate-900">{row.invoice_number}</td>
                     <td className="px-4 py-3 text-slate-900">{row.customer_name}</td>
-                    <td className="px-4 py-3 text-slate-600">{row.tax_invoice_no}</td>
+                    <td className="px-4 py-3">
+                      {row.payment_status === 'paid' ? (
+                        <span className="text-slate-400">-</span>
+                      ) : (
+                        <span className={`${new Date(row.due_date) < new Date() ? 'text-red-600 font-medium' : 'text-slate-700'}`}>
+                          {row.due_date}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {row.payment_receipt ? (
+                        <span className="text-green-600 font-medium">{row.payment_receipt}</span>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right text-slate-900">{parseFloat(row.net_amount || 0).toFixed(2)}</td>
                     <td className="px-4 py-3 text-right text-slate-900">{parseFloat(row.ppn || 0).toFixed(2)}</td>
                     <td className="px-4 py-3 text-right font-semibold text-slate-900">{parseFloat(row.total_amount || 0).toFixed(2)}</td>

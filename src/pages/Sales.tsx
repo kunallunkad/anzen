@@ -34,7 +34,6 @@ interface SalesInvoice {
   linked_challan_ids?: string[] | null;
   paid_amount?: number;
   balance_amount?: number;
-  latest_payment_date?: string | null;
   customers?: {
     company_name: string;
     gst_vat_type: string;
@@ -268,12 +267,10 @@ export function Sales() {
 
       if (error) throw error;
 
-      // Calculate paid amount, balance, and latest payment date for each invoice
+      // Calculate paid amount and balance for each invoice
       const invoicesWithPayments = await Promise.all((data || []).map(async (inv) => {
-        const [{ data: paidData }, { data: latestPaymentDate }] = await Promise.all([
-          supabase.rpc('get_invoice_paid_amount', { p_invoice_id: inv.id }),
-          supabase.rpc('get_invoice_latest_payment_date', { p_invoice_id: inv.id })
-        ]);
+        const { data: paidData } = await supabase
+          .rpc('get_invoice_paid_amount', { p_invoice_id: inv.id });
 
         const paidAmount = paidData || 0;
         const balance = inv.total_amount - paidAmount;
@@ -281,8 +278,7 @@ export function Sales() {
         return {
           ...inv,
           paid_amount: paidAmount,
-          balance_amount: balance,
-          latest_payment_date: latestPaymentDate
+          balance_amount: balance
         };
       }));
 
@@ -1145,38 +1141,6 @@ export function Sales() {
       key: 'invoice_date',
       label: t('common.date'),
       render: (value: any, inv: SalesInvoice) => formatDate(inv.invoice_date)
-    },
-    {
-      key: 'due_date',
-      label: 'Due Date',
-      render: (value: any, inv: SalesInvoice) => (
-        <div className="text-sm">
-          {inv.payment_status === 'paid' ? (
-            <span className="text-gray-400">-</span>
-          ) : (
-            <span className={`font-medium ${
-              new Date(inv.due_date) < new Date() ? 'text-red-600' : 'text-gray-700'
-            }`}>
-              {formatDate(inv.due_date)}
-            </span>
-          )}
-        </div>
-      )
-    },
-    {
-      key: 'latest_payment_date',
-      label: 'Payment Receipt',
-      render: (value: any, inv: SalesInvoice) => (
-        <div className="text-sm">
-          {inv.latest_payment_date ? (
-            <div className="flex items-center gap-1">
-              <span className="text-green-600 font-medium">{formatDate(inv.latest_payment_date)}</span>
-            </div>
-          ) : (
-            <span className="text-gray-400">-</span>
-          )}
-        </div>
-      )
     },
     {
       key: 'total_amount',
