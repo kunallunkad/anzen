@@ -68,66 +68,26 @@ export function AccountLedger() {
     try {
       setLoading(true);
 
-      // Check if this account is linked to a bank account
-      const { data: bankAccount } = await supabase
-        .from('bank_accounts')
-        .select('opening_balance, opening_balance_date')
-        .eq('coa_id', selectedAccount.id)
-        .single();
+      const isDebitNormal = selectedAccount.normal_balance === 'debit' ||
+        (!selectedAccount.normal_balance && (selectedAccount.account_type === 'asset' || selectedAccount.account_type === 'expense'));
+
+      // Get opening balance (all transactions before start date)
+      const { data: openingData, error: openingError } = await supabase
+        .from('journal_entry_lines')
+        .select('debit, credit, journal_entries!inner(entry_date)')
+        .eq('account_id', selectedAccount.id)
+        .lt('journal_entries.entry_date', dateRange.startDate);
+
+      if (openingError) throw openingError;
 
       let opening = 0;
-
-      // If linked to a bank account, use its opening balance
-      if (bankAccount && bankAccount.opening_balance && bankAccount.opening_balance_date) {
-        const openingBalanceDate = bankAccount.opening_balance_date;
-        const startDate = dateRange.startDate;
-
-        // If viewing from opening balance date onwards, use the bank's opening balance
-        if (startDate >= openingBalanceDate) {
-          // Calculate balance from opening balance date to start date (exclusive)
-          const { data: openingData } = await supabase
-            .from('journal_entry_lines')
-            .select('debit, credit, journal_entries!inner(entry_date)')
-            .eq('account_id', selectedAccount.id)
-            .gte('journal_entries.entry_date', openingBalanceDate)
-            .lt('journal_entries.entry_date', startDate);
-
-          let journalBalance = 0;
-          openingData?.forEach((line: any) => {
-            journalBalance += line.debit - line.credit;
-          });
-
-          opening = Number(bankAccount.opening_balance) + journalBalance;
+      openingData?.forEach((line: any) => {
+        if (isDebitNormal) {
+          opening += line.debit - line.credit;
         } else {
-          // Viewing period before opening balance date - use journal entries only
-          const { data: openingData } = await supabase
-            .from('journal_entry_lines')
-            .select('debit, credit, journal_entries!inner(entry_date)')
-            .eq('account_id', selectedAccount.id)
-            .lt('journal_entries.entry_date', startDate);
-
-          openingData?.forEach((line: any) => {
-            opening += line.debit - line.credit;
-          });
+          opening += line.credit - line.debit;
         }
-      } else {
-        // Not a bank account, calculate from journal entries only
-        const { data: openingData, error: openingError } = await supabase
-          .from('journal_entry_lines')
-          .select('debit, credit, journal_entries!inner(entry_date)')
-          .eq('account_id', selectedAccount.id)
-          .lt('journal_entries.entry_date', dateRange.startDate);
-
-        if (openingError) throw openingError;
-
-        openingData?.forEach((line: any) => {
-          if (selectedAccount.normal_balance === 'debit') {
-            opening += line.debit - line.credit;
-          } else {
-            opening += line.credit - line.debit;
-          }
-        });
-      }
+      });
 
       setOpeningBalance(opening);
 
@@ -167,19 +127,13 @@ export function AccountLedger() {
       const ledgerWithBalance = sortedData.map((line: any) => {
         const entry = line.journal_entries;
 
-        // Update balance based on account type
-        if (selectedAccount.normal_balance === 'debit') {
+        if (isDebitNormal) {
           runningBalance += (line.debit - line.credit);
         } else {
           runningBalance += (line.credit - line.debit);
         }
 
-        // Build a rich narration with source details
-        let narration = line.description || '';
-        if (entry.source_module && entry.reference_number) {
-          const module = entry.source_module.replace(/_/g, ' ').toUpperCase();
-          narration = narration ? `${narration} (${module}: ${entry.reference_number})` : `${module}: ${entry.reference_number}`;
-        }
+        const narration = line.description || entry.reference_number || '-';
 
         return {
           id: line.id,
