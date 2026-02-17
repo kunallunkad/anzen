@@ -856,7 +856,7 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
           .from('bank_statement_lines')
           .update({
             matched_expense_id: null,
-            reconciliation_status: 'unmatched',
+            match_status: 'unmatched',
             matched_at: null,
             matched_by: null,
             notes: null
@@ -898,10 +898,10 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
         }
       }
 
-      const { error } = await supabase
-        .from('finance_expenses')
-        .delete()
-        .eq('id', id);
+      // Use the safe delete RPC function that handles bank statement unlinking
+      const { error } = await supabase.rpc('delete_expense_safe', {
+        p_expense_id: id
+      });
 
       if (error) throw error;
 
@@ -918,11 +918,12 @@ export function ExpenseManager({ canManage }: ExpenseManagerProps) {
     if (!await showConfirm({ title: 'Confirm', message: 'Are you sure you want to unlink this expense from the bank statement?\n\nThe bank statement line will be set back to "Unmatched" status.', variant: 'warning' })) return;
 
     try {
+      // Update all bank statement lines linked to this expense
       const { error } = await supabase
         .from('bank_statement_lines')
         .update({
           matched_expense_id: null,
-          reconciliation_status: 'unmatched',
+          match_status: 'unmatched',
           matched_at: null,
           matched_by: null,
           notes: null
