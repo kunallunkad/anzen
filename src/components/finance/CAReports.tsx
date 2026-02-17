@@ -29,6 +29,8 @@ export function CAReports() {
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [selectedBankAccount, setSelectedBankAccount] = useState<string>('');
 
   // Use date range from context (master date picker)
   const dateRange: DateRange = {
@@ -50,10 +52,25 @@ export function CAReports() {
   ];
 
   useEffect(() => {
+    loadBankAccounts();
+  }, []);
+
+  useEffect(() => {
     if (selectedReport) {
       loadReportData();
     }
-  }, [selectedReport, contextDateRange.startDate, contextDateRange.endDate]);
+  }, [selectedReport, contextDateRange.startDate, contextDateRange.endDate, selectedBankAccount]);
+
+  const loadBankAccounts = async () => {
+    const { data, error } = await supabase
+      .from('bank_accounts')
+      .select('id, bank_name, account_number, currency, coa_id')
+      .order('bank_name');
+
+    if (!error && data) {
+      setBankAccounts(data);
+    }
+  };
 
   const loadReportData = async () => {
     setLoading(true);
@@ -159,18 +176,36 @@ export function CAReports() {
   };
 
   const loadBankLedger = async () => {
-    const { data: bankAccounts } = await supabase
+    let accountIds: string[] = [];
+
+    // If a specific bank account is selected, use only that account's COA
+    if (selectedBankAccount) {
+      const selectedBank = bankAccounts.find(b => b.id === selectedBankAccount);
+      if (selectedBank && selectedBank.coa_id) {
+        accountIds = [selectedBank.coa_id];
+      }
+    } else {
+      // Load all bank accounts
+      const { data: allBankAccounts } = await supabase
+        .from('chart_of_accounts')
+        .select('id, code, name')
+        .like('code', '1111%');
+
+      if (!allBankAccounts || allBankAccounts.length === 0) return [];
+      accountIds = allBankAccounts.map(a => a.id);
+    }
+
+    if (accountIds.length === 0) return [];
+
+    // Get account details for display
+    const { data: coaAccounts } = await supabase
       .from('chart_of_accounts')
-      .select('id, code, name')
-      .like('code', '1111%');
-
-    if (!bankAccounts || bankAccounts.length === 0) return [];
-
-    const accountIds = bankAccounts.map(a => a.id);
+      .select('id, name')
+      .in('id', accountIds);
 
     const { data: entries } = await supabase
       .from('journal_entries')
-      .select('id, entry_date, entry_number, source_module')
+      .select('id, entry_date, entry_number, source_module, reference_number')
       .gte('entry_date', dateRange.from)
       .lte('entry_date', dateRange.to)
       .order('entry_date', { ascending: true });
@@ -189,14 +224,14 @@ export function CAReports() {
 
     const result = lines?.map(line => {
       const entry = entries.find(e => e.id === line.journal_entry_id);
-      const account = bankAccounts.find(a => a.id === line.account_id);
+      const account = coaAccounts?.find(a => a.id === line.account_id);
       return {
         date: entry?.entry_date,
         voucher_no: entry?.entry_number,
         account_name: account?.name,
         debit: line.debit,
         credit: line.credit,
-        narration: line.description
+        narration: line.description || entry?.reference_number || ''
       };
     }) || [];
 
@@ -739,6 +774,24 @@ export function CAReports() {
             Export to Excel
           </button>
         </div>
+
+        {selectedReport === 'bank_ledger' && (
+          <div className="mb-4 flex items-center gap-2">
+            <label className="text-sm font-medium text-slate-700">Bank Account:</label>
+            <select
+              value={selectedBankAccount}
+              onChange={(e) => setSelectedBankAccount(e.target.value)}
+              className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            >
+              <option value="">All Bank Accounts</option>
+              {bankAccounts.map((bank) => (
+                <option key={bank.id} value={bank.id}>
+                  {bank.bank_name} - {bank.account_number} ({bank.currency})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-12 text-slate-500">Loading report...</div>
